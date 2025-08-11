@@ -13,9 +13,9 @@ This guide defines universal coding standards and project management workflows t
 - Use Agile methodology by creating Epics, Stories and Tasks
 - Each Epic, Stor yor Task should include user stories, priority, and acceptance criteria. 
 - The `PLAN.md` should provide a detailed outline of tasks, milestones, deliverables and acceptance criteria.
-- The `.claude/claude-instructions.md` should be used to guide the creation and execution of these plans.
-- Each Agile Epic, Story or Task references necessary instruction files stored under the `.claude/agents/instructions/` directory.
-- Each Agile Epic, Story or Task may also reference relevant personas from the `.claude/agents/personas/` directory.
+- The `.github/claude-instructions.md` should be used to guide the creation and execution of these plans.
+- Each Agile Epic, Story or Task references necessary instruction files stored under the `.github/instructions/` directory.
+- Each Agile Epic, Story or Task may also reference relevant personas from the `.github/personas/` directory.
 - If additional context or clarification is needed, team members should consult the relevant instruction files or personas.
 - If personas are not sufficient, generate new ones as needed.
 - If instructions are not sufficient, create new ones as needed.
@@ -49,8 +49,8 @@ This guide defines universal coding standards and project management workflows t
 ### General Principles
 
 - Use descriptive variable, class and function names
-- Follow language-specific style guides under `.claude/agents/instructions/`
-- Use task specific personas from `.claude/agents/personas/`
+- Follow language-specific style guides under `.github/instructions/`
+- Use task specific personas from `.github/personas/`
 - Keep functions small and focused on a single reusable task.
 - Use meaningful comments to explain "why" something is done, not "what" is done.
 - Use meaningful comments to explain complex logic.
@@ -71,7 +71,7 @@ This guide defines universal coding standards and project management workflows t
 
 ### Code Formatting
 
-- Follow language-specific style guides under `.claude/agents/instructions/`
+- Follow language-specific style guides under `.github/instructions/`
 - Set a maximum line length of 100 characters, utilize optimal breaking points for readability. 
 - Use training commas in multi-line structuers
 - Follow prettier/eslint configurations when available
