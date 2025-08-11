@@ -1,0 +1,790 @@
+openapi: 3.0.3
+info:
+  title: Copilot Skillset Reviewer API
+  description: |
+    AI-powered code review and compliance system API
+
+    This API provides endpoints for:
+    - Loading and managing coding rules from GitHub repositories
+    - Processing unified diff formats for code change analysis
+    - Running comprehensive compliance checks on code changes
+    - Generating actionable checklists from rule documents
+
+    ## Authentication
+
+    Most endpoints require GitHub App authentication via JWT tokens.
+
+    ## Rate Limits
+
+    API endpoints are rate-limited to prevent abuse:
+    - 100 requests per minute per IP for public endpoints
+    - 1000 requests per minute for authenticated GitHub App requests
+
+    ## Error Handling
+
+    All errors follow a consistent structured format with machine-readable error codes,
+    correlation IDs for request tracing, and detailed error messages.
+    
+    ## Request Correlation
+    
+    All requests include correlation IDs (`x-correlation-id` header) for request tracing
+    across distributed systems. If not provided by the client, a UUID will be generated.
+  version: 0.9.0
+  contact:
+    name: Armoin LLC
+    url: https://github.com/armoin-llc/copilot-skillset-reviewer
+    email: support@armoin.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.copilot-skillset.com
+    description: Production server
+paths:
+  /healthz:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: 'ok'
+                timestamp: '2025-08-11T12:00:00Z'
+                version: '0.9.0'
+                uptime: 3600
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /load-rules:
+    post:
+      summary: Load coding rules
+      description: |
+        Load coding rules from GitHub repositories or bundled guidance packs.
+
+        Supports loading from:
+        - GitHub repository `.copilot/` directories
+        - Bundled guidance packs (baseline-secure, oss-apache-2, etc.)
+        - Custom repository paths
+      operationId: loadRules
+      tags:
+        - Rules
+      security:
+        - GitHubApp: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoadRulesRequest'
+            examples:
+              github_repo:
+                summary: Load from GitHub repository
+                value:
+                  source: 'github'
+                  repository: 'owner/repo'
+                  path: '.copilot'
+                  ref: 'main'
+              bundled_pack:
+                summary: Load bundled guidance pack
+                value:
+                  source: 'bundled'
+                  pack: 'baseline-secure'
+                  mode: 'merged'
+      responses:
+        '200':
+          description: Rules loaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadRulesResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Repository or pack not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /summarize-rules:
+    post:
+      summary: Generate rule summaries
+      description: |
+        Generate actionable checklists from rule documents.
+
+        Processes rule documents and extracts up to 400 actionable items
+        with prioritization and categorization.
+      operationId: summarizeRules
+      tags:
+        - Rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SummarizeRulesRequest'
+      responses:
+        '200':
+          description: Rules summarized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizeRulesResponse'
+        '400':
+          description: Invalid rule documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /normalize-diff:
+    post:
+      summary: Parse and normalize diff
+      description: |
+        Parse unified diff format and extract changed file information.
+
+        Supports:
+        - Git unified diff format
+        - Standard unified diff format  
+        - Configurable strip levels for path normalization
+        - Binary file detection
+        - File rename/move detection
+      operationId: normalizeDiff
+      tags:
+        - Diff Processing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NormalizeDiffRequest'
+      responses:
+        '200':
+          description: Diff normalized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NormalizeDiffResponse'
+        '400':
+          description: Invalid diff format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /assert-compliance:
+    post:
+      summary: Run compliance checks
+      description: |
+        Run comprehensive compliance checks on code changes.
+
+        Performs checks for:
+        - Secret detection
+        - License header validation  
+        - Test presence verification
+        - Import restrictions
+        - File size limits
+        - PR label validation
+        - Commit message formatting
+      operationId: assertCompliance
+      tags:
+        - Compliance
+      security:
+        - GitHubApp: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssertComplianceRequest'
+      responses:
+        '200':
+          description: Compliance check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssertComplianceResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+components:
+  securitySchemes:
+    GitHubApp:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: GitHub App JWT token for repository access
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - version
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, error]
+          description: Service health status
+        timestamp:
+          type: string
+          format: date-time
+          description: Current server timestamp
+        version:
+          type: string
+          description: Application version
+        uptime:
+          type: number
+          description: Server uptime in seconds
+        dependencies:
+          type: object
+          description: Health status of external dependencies
+          additionalProperties:
+            type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error context
+        traceId:
+          type: string
+          description: Request correlation ID for support
+
+    LoadRulesRequest:
+      type: object
+      required:
+        - source
+      properties:
+        source:
+          type: string
+          enum: [github, bundled]
+          description: Source of rules to load
+        repository:
+          type: string
+          description: GitHub repository (owner/repo format)
+        path:
+          type: string
+          default: '.copilot'
+          description: Path within repository to load rules from
+        ref:
+          type: string
+          default: 'main'
+          description: Git reference (branch, tag, or commit SHA)
+        pack:
+          type: string
+          enum:
+            [
+              baseline-secure,
+              oss-apache-2,
+              enterprise-strict,
+              pci-dss,
+              pii-redaction,
+              design-doc-reviewer,
+            ]
+          description: Bundled guidance pack name
+        mode:
+          type: string
+          enum: [org-only, repo-only, merged]
+          default: merged
+          description: How to combine organizational and repository rules
+
+    LoadRulesResponse:
+      type: object
+      required:
+        - success
+        - ruleCount
+      properties:
+        success:
+          type: boolean
+          description: Whether rules were loaded successfully
+        ruleCount:
+          type: number
+          description: Number of rules loaded
+        personas:
+          type: array
+          items:
+            $ref: '#/components/schemas/Persona'
+          description: Loaded personas
+        policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+          description: Loaded policies
+        source:
+          type: string
+          description: Actual source used for loading
+        loadTime:
+          type: number
+          description: Load time in milliseconds
+
+    Persona:
+      type: object
+      required:
+        - name
+        - role
+        - content
+      properties:
+        name:
+          type: string
+          description: Persona name
+        role:
+          type: string
+          description: Persona role/responsibility
+        content:
+          type: string
+          description: Persona definition content
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Persona capabilities/skills
+
+    Policy:
+      type: object
+      required:
+        - name
+        - content
+      properties:
+        name:
+          type: string
+          description: Policy name
+        content:
+          type: string
+          description: Policy definition content
+        category:
+          type: string
+          description: Policy category (security, performance, etc.)
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+          description: Policy priority level
+
+    SummarizeRulesRequest:
+      type: object
+      required:
+        - rules
+      properties:
+        rules:
+          type: array
+          items:
+            type: string
+          description: Rule documents to summarize
+        maxItems:
+          type: number
+          default: 400
+          maximum: 400
+          description: Maximum number of actionable items to generate
+        categories:
+          type: array
+          items:
+            type: string
+          description: Filter by specific categories
+
+    SummarizeRulesResponse:
+      type: object
+      required:
+        - actionableItems
+        - summary
+      properties:
+        actionableItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionableItem'
+          description: Generated actionable checklist items
+        summary:
+          type: string
+          description: Overall summary of rules
+        totalRules:
+          type: number
+          description: Total number of input rules processed
+        processingTime:
+          type: number
+          description: Processing time in milliseconds
+
+    ActionableItem:
+      type: object
+      required:
+        - id
+        - description
+        - priority
+        - category
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the item
+        description:
+          type: string
+          description: Actionable description of what to check
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+          description: Priority level
+        category:
+          type: string
+          description: Category (security, performance, style, etc.)
+        source:
+          type: string
+          description: Source rule that generated this item
+
+    NormalizeDiffRequest:
+      type: object
+      required:
+        - diff
+      properties:
+        diff:
+          type: string
+          description: Unified diff content to parse
+        stripLevel:
+          type: number
+          default: 1
+          description: Number of path components to strip
+        format:
+          type: string
+          enum: [git, unified]
+          default: git
+          description: Expected diff format
+
+    NormalizeDiffResponse:
+      type: object
+      required:
+        - success
+        - files
+      properties:
+        success:
+          type: boolean
+          description: Whether diff was parsed successfully
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileChange'
+          description: List of changed files
+        stats:
+          $ref: '#/components/schemas/DiffStats'
+          description: Diff statistics
+
+    FileChange:
+      type: object
+      required:
+        - path
+        - status
+      properties:
+        path:
+          type: string
+          description: File path relative to repository root
+        status:
+          type: string
+          enum: [added, modified, deleted, renamed]
+          description: Type of change
+        oldPath:
+          type: string
+          description: Original path for renamed files
+        additions:
+          type: number
+          description: Number of lines added
+        deletions:
+          type: number
+          description: Number of lines deleted
+        isBinary:
+          type: boolean
+          description: Whether file is binary
+
+    DiffStats:
+      type: object
+      required:
+        - totalFiles
+        - additions
+        - deletions
+      properties:
+        totalFiles:
+          type: number
+          description: Total number of files changed
+        additions:
+          type: number
+          description: Total lines added
+        deletions:
+          type: number
+          description: Total lines deleted
+        netChanges:
+          type: number
+          description: Net change in lines (additions - deletions)
+
+    AssertComplianceRequest:
+      type: object
+      required:
+        - diff
+        - repository
+      properties:
+        diff:
+          type: string
+          description: Unified diff of changes to check
+        repository:
+          type: string
+          description: GitHub repository (owner/repo format)
+        pullRequest:
+          type: number
+          description: Pull request number for context
+        config:
+          $ref: '#/components/schemas/ComplianceConfig'
+          description: Compliance checking configuration
+
+    ComplianceConfig:
+      type: object
+      properties:
+        requireTests:
+          type: boolean
+          default: true
+          description: Whether to require tests for code changes
+        maxFileSize:
+          type: number
+          default: 512000
+          description: Maximum file size in bytes
+        secretDetection:
+          type: boolean
+          default: true
+          description: Whether to run secret detection
+        licenseHeaders:
+          type: boolean
+          default: true
+          description: Whether to check for license headers
+        importRestrictions:
+          type: array
+          items:
+            type: string
+          description: Prohibited import patterns
+
+    AssertComplianceResponse:
+      type: object
+      required:
+        - success
+        - findings
+        - summary
+      properties:
+        success:
+          type: boolean
+          description: Whether compliance check completed successfully
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplianceFinding'
+          description: Compliance check results
+        summary:
+          $ref: '#/components/schemas/ComplianceSummary'
+          description: Summary of findings
+        executionTime:
+          type: number
+          description: Check execution time in milliseconds
+
+    ComplianceFinding:
+      type: object
+      required:
+        - id
+        - status
+        - message
+      properties:
+        id:
+          type: string
+          description: Unique finding identifier
+        status:
+          type: string
+          enum: [pass, fail, warn, na]
+          description: Finding status
+        message:
+          type: string
+          description: Human-readable finding description
+        file:
+          type: string
+          description: File path where finding was detected
+        line:
+          type: number
+          description: Line number where finding was detected
+        column:
+          type: number
+          description: Column number where finding was detected
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+          description: Finding severity level
+        category:
+          type: string
+          description: Category of the finding
+        remediation:
+          type: string
+          description: Suggested remediation steps
+
+    ComplianceSummary:
+      type: object
+      required:
+        - totalChecks
+        - passed
+        - failed
+        - warnings
+      properties:
+        totalChecks:
+          type: number
+          description: Total number of checks performed
+        passed:
+          type: number
+          description: Number of checks that passed
+        failed:
+          type: number
+          description: Number of checks that failed
+        warnings:
+          type: number
+          description: Number of warnings generated
+        notApplicable:
+          type: number
+          description: Number of checks not applicable
+        overallStatus:
+          type: string
+          enum: [pass, fail, warn]
+          description: Overall compliance status
+
+    ApiError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - correlationId
+            - timestamp
+          properties:
+            code:
+              $ref: '#/components/schemas/ErrorCode'
+            message:
+              type: string
+              description: Human-readable error message
+              example: "owner, repo, ref required"
+            correlationId:
+              type: string
+              format: uuid
+              description: Unique request identifier for tracing
+              example: "550e8400-e29b-41d4-a716-446655440000"
+            timestamp:
+              type: string
+              format: date-time
+              description: Error occurrence timestamp
+              example: "2025-08-11T12:00:00.000Z"
+            details:
+              type: object
+              description: Additional error context
+              additionalProperties: true
+              
+    ErrorCode:
+      type: string
+      description: Machine-readable error codes
+      enum:
+        # Client Error Codes (4xx)
+        - MISSING_REQUIRED_FIELDS
+        - INVALID_MARKDOWN_FIELD
+        - MISSING_DIFF_FIELD
+        - MISSING_PACK_ID
+        - ENDPOINT_NOT_FOUND
+        - INVALID_REQUEST_FORMAT
+        # Server Error Codes (5xx)
+        - INTERNAL_SERVER_ERROR
+        - LOAD_RULES_FAILED
+        - SUMMARIZE_RULES_FAILED
+        - INFER_QUALITY_GATES_FAILED
+        - NORMALIZE_DIFF_FAILED
+        - ASSERT_COMPLIANCE_FAILED
+        - FILE_CONTENTS_FAILED
+        - BUNDLED_GUIDANCE_FAILED
+        - SELECT_INSTRUCTION_PACK_FAILED
+        # GitHub Integration Error Codes
+        - GITHUB_API_ERROR
+        - GITHUB_AUTH_ERROR
+        - GITHUB_RATE_LIMIT
+        - REPOSITORY_NOT_FOUND
+        # Rule Processing Error Codes
+        - RULE_PARSING_ERROR
+        - INVALID_RULE_FORMAT
+        # Diff Processing Error Codes
+        - INVALID_DIFF_FORMAT
+        - DIFF_TOO_LARGE
+        # Compliance Check Error Codes
+        - COMPLIANCE_CHECK_FAILED
+        - FILE_SIZE_EXCEEDED
+
+    HealthCheckResponse:
+      type: object
+      required:
+        - ok
+        - timestamp
+        - uptime
+        - version
+      properties:
+        ok:
+          type: boolean
+          description: Health status indicator
+          example: true
+        timestamp:
+          type: string
+          format: date-time
+          description: Current server timestamp
+          example: "2025-08-11T12:00:00.000Z"
+        uptime:
+          type: number
+          description: Server uptime in seconds
+          example: 3600.5
+        version:
+          type: string
+          description: Application version
+          example: "0.9.0"
+        environment:
+          type: string
+          description: Deployment environment
+          example: "production"
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Rules
+    description: Rule management and processing
+  - name: Diff Processing
+    description: Diff parsing and normalization
+  - name: Compliance
+    description: Compliance checking and validation

@@ -1,0 +1,84 @@
+# Docker ignore file to reduce build context size and improve security
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CHANGELOG.md
+HISTORY.md
+SUGGESTIONS.md
+BUGS.md
+REVIEW.md
+WHITELIST.md
+BLACKLIST.md
+REQUIREMENTS*.md
+PLAN.md
+ASK.md
+docs/
+wiki/
+
+# Development files
+.env*
+!.env.example
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+dist/
+coverage/
+*.tgz
+*.tar.gz
+
+# Testing
+tests/
+*.test.ts
+*.spec.ts
+jest.config.*
+
+# Linting and formatting
+.eslintrc.*
+.prettierrc*
+.prettierignore
+
+# CI/CD
+.github/
+sonar-project.properties
+
+# VS Code Extension
+vscode-extension/
+
+# Container files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Make files
+Makefile
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Claude integration (will be mounted as volume in MCP service)
+.claude/
+
+# Diff and patch files
+diff/

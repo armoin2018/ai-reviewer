@@ -1,13 +1,84 @@
 version: "3.9"
 services:
+  # Development service with hot reload
+  skillset-dev:
+    image: armoin2018/copilot-skillset:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - GH_APP_ID=${GH_APP_ID:-}
+      - GH_APP_PRIVATE_KEY=${GH_APP_PRIVATE_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+    ports:
+      - "8080:8080"
+      - "9229:9229" # Debug port
+    volumes:
+      # Mount source code for hot reload
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./bundled:/app/bundled:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./jest.config.cjs:/app/jest.config.cjs:ro
+      - ./.eslintrc.cjs:/app/.eslintrc.cjs:ro
+      - ./.prettierrc:/app/.prettierrc:ro
+      # Exclude node_modules to prevent conflicts
+      - /app/node_modules
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Production service
   skillset:
     image: armoin2018/copilot-skillset:v0.9.0
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
     environment:
+      - NODE_ENV=production
       - PORT=8080
       - GH_APP_ID=${GH_APP_ID}
       - GH_APP_PRIVATE_KEY=${GH_APP_PRIVATE_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     ports:
       - "8080:8080"
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MCP service for Claude integration
+  skillset-mcp:
+    image: armoin2018/copilot-skillset:v0.9.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - NODE_ENV=production
+      - GH_APP_ID=${GH_APP_ID}
+      - GH_APP_PRIVATE_KEY=${GH_APP_PRIVATE_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    command: ["npm", "run", "mcp"]
+    volumes:
+      # Mount .claude directory for MCP operations
+      - ./.claude:/app/.claude:rw
+    env_file:
+      - .env
+    restart: unless-stopped

@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 **Build and Development:**
+
 ```bash
 npm i                    # Install dependencies
 npm run build           # Compile TypeScript to dist/
@@ -13,11 +14,13 @@ npm start               # Start HTTP server using compiled dist/server.js
 ```
 
 **MCP Server:**
+
 ```bash
 npm run mcp             # Start MCP server (JSON-RPC over stdio)
 ```
 
 **VS Code Extension:**
+
 ```bash
 npm run ext:install     # Install extension dependencies
 npm run ext:build       # Build the VS Code extension
@@ -25,11 +28,13 @@ npm run ext:package     # Package the extension
 ```
 
 **Pack Management:**
+
 ```bash
 npm run pack:lint bundled/_template-pack    # Lint a guidance pack
 ```
 
 **Container Operations:**
+
 ```bash
 make build              # Build Docker image (armoin2018/copilot-skillset:v0.9.0)
 make push               # Push to registry
@@ -48,7 +53,7 @@ This is a **Copilot Skillset Reviewer** - a hybrid system providing multiple int
    - Main endpoints: `/load-rules`, `/assert-compliance`, `/normalize-diff`, `/summarize-rules`
    - Supports GitHub App integration for PR reviews
 
-2. **MCP Server** (`src/mcp.ts`) 
+2. **MCP Server** (`src/mcp.ts`)
    - JSON-RPC interface over stdio for Claude MCP integration
    - Exposes same functionality as HTTP API via Skills interface
 
@@ -59,7 +64,7 @@ This is a **Copilot Skillset Reviewer** - a hybrid system providing multiple int
 ### Key Modules
 
 - **`src/rules.ts`**: Rule summarization and checklist generation
-- **`src/diff.ts`**: Unified diff parsing and normalization  
+- **`src/diff.ts`**: Unified diff parsing and normalization
 - **`src/assert.ts`**: Compliance checking against rules and diffs
 - **`src/github.ts`**: GitHub API integration for loading rules and file contents
 - **`src/bundled.ts`**: Management of bundled guidance packs
@@ -68,8 +73,9 @@ This is a **Copilot Skillset Reviewer** - a hybrid system providing multiple int
 ### Bundled Guidance Packs
 
 The system includes pre-built guidance packs in `bundled/`:
+
 - `baseline-secure`: Basic security and compliance
-- `oss-apache-2`: Apache-2 license enforcement  
+- `oss-apache-2`: Apache-2 license enforcement
 - `enterprise-strict`: Enterprise coding standards
 - `pci-dss`: Payment card industry compliance
 - `pii-redaction`: Personal data protection
@@ -93,7 +99,7 @@ Each pack contains `personas/reviewer.md` and `policies/*.md` files that define 
 
 ## Environment Variables
 
-- `PORT`: HTTP server port (default: 8080)  
+- `PORT`: HTTP server port (default: 8080)
 - `GH_APP_ID`: GitHub App ID for API access
 - `GH_APP_PRIVATE_KEY`: GitHub App private key (PEM format)
 

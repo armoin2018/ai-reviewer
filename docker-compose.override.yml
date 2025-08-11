@@ -1,0 +1,27 @@
+# Docker Compose override for development
+# This file is automatically loaded by docker-compose to override production settings
+
+version: "3.9"
+services:
+  # Override production service to use development target
+  skillset:
+    build:
+      target: development
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    ports:
+      - "9229:9229" # Add debug port
+    volumes:
+      # Enable hot reload by mounting source code
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./bundled:/app/bundled:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./jest.config.cjs:/app/jest.config.cjs:ro
+      - ./.eslintrc.cjs:/app/.eslintrc.cjs:ro
+      - ./.prettierrc:/app/.prettierrc:ro
+      # Preserve node_modules from container
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
