@@ -1,0 +1,27 @@
+{
+  "name": "infer_quality_gates",
+  "inference_description": "Recommend CI commands based on files present.",
+  "endpoint": "POST https://<your-domain>/infer-quality-gates",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "languageHints": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

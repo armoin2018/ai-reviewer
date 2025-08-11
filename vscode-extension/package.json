@@ -1,0 +1,111 @@
+{
+  "name": "copilot-skillset-reviewer",
+  "displayName": "Copilot Skillset Reviewer (Hybrid)",
+  "description": "Repo-aware compliance rules, MCP server, and VS Code integration.",
+  "version": "0.9.0",
+  "publisher": "armoinllc",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:skillset.runAssertCompliance",
+    "onCommand:skillset.summarizeRules",
+    "onCommand:skillset.previewGuidance",
+    "onCommand:skillset.packLint",
+    "onCommand:skillset.selectPack"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "skillset.runAssertCompliance",
+        "title": "Skillset: Run Assert Compliance"
+      },
+      {
+        "command": "skillset.summarizeRules",
+        "title": "Skillset: Summarize Repo Rules"
+      },
+      {
+        "command": "skillset.previewGuidance",
+        "title": "Skillset: Preview Effective Guidance"
+      },
+      {
+        "command": "skillset.packLint",
+        "title": "Skillset: Pack Lint (Validate Policy/Persona Pack)"
+      },
+      {
+        "command": "skillset.selectPack",
+        "title": "Skillset: Select Mode/Pack"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Copilot Skillset Reviewer",
+      "properties": {
+        "skillset.serverMode": {
+          "type": "string",
+          "default": "local",
+          "enum": [
+            "local",
+            "http"
+          ],
+          "description": "Use internal library (local) or call an HTTP endpoint."
+        },
+        "skillset.httpBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "Base URL when serverMode=http."
+        },
+        "skillset.owner": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub owner (optional)"
+        },
+        "skillset.repo": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub repo (optional)"
+        },
+        "skillset.ref": {
+          "type": "string",
+          "default": "main",
+          "description": "Git ref (optional)"
+        },
+        "skillset.guidanceMode": {
+          "type": "string",
+          "default": "merged",
+          "enum": [
+            "org",
+            "repo",
+            "merged"
+          ],
+          "description": "Prefer org defaults, repo files, or merged guidance"
+        },
+        "skillset.packId": {
+          "type": "string",
+          "default": "baseline-secure",
+          "description": "Bundled instruction pack id when using org/merged"
+        }
+      }
+    }
+  },
+  "main": "./dist/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.5.4",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "author": "Armoin LLC"
+}

@@ -1,0 +1,24 @@
+{
+  "name": "load_rules",
+  "inference_description": "Fetch repository guidance including `.github/copilot-instructions.md`, `.github/instructions/`, and `.github/personas/`.",
+  "endpoint": "POST https://<your-domain>/load-rules",
+  "schema": {
+    "type": "object",
+    "required": [
+      "owner",
+      "repo",
+      "ref"
+    ],
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "ref": {
+        "type": "string"
+      }
+    }
+  }
+}

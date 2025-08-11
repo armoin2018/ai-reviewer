@@ -1,0 +1,74 @@
+{
+  "baseline-secure": {
+    "title": "Baseline Secure Coding Policy",
+    "description": "Minimal cross-language security and compliance assertions.",
+    "paths": {
+      "policies": [
+        "bundled/baseline-secure/policies/policy.md"
+      ],
+      "personas": [
+        "bundled/baseline-secure/personas/reviewer.md"
+      ]
+    }
+  },
+  "oss-apache-2": {
+    "title": "OSS Apache-2 Header Policy",
+    "description": "Require Apache-2 headers, block incompatible headers.",
+    "paths": {
+      "policies": [
+        "bundled/oss-apache-2/policies/policy.md"
+      ],
+      "personas": [
+        "bundled/oss-apache-2/personas/reviewer.md"
+      ]
+    }
+  },
+  "enterprise-strict": {
+    "title": "Enterprise Strict Policy",
+    "description": "Strict directives for enterprise codebases.",
+    "paths": {
+      "policies": [
+        "bundled/enterprise-strict/policies/policy.md"
+      ],
+      "personas": [
+        "bundled/enterprise-strict/personas/reviewer.md"
+      ]
+    }
+  },
+  "pci-dss": {
+    "title": "PCI-DSS Hardening",
+    "description": "Detect payment-card patterns and enforce PCI hygiene.",
+    "paths": {
+      "policies": [
+        "bundled/pci-dss/policies/policy.md"
+      ],
+      "personas": [
+        "bundled/pci-dss/personas/reviewer.md"
+      ]
+    }
+  },
+  "pii-redaction": {
+    "title": "PII Redaction",
+    "description": "Prevents PII leakage; requires masking and tests.",
+    "paths": {
+      "policies": [
+        "bundled/pii-redaction/policies/policy.md"
+      ],
+      "personas": [
+        "bundled/pii-redaction/personas/reviewer.md"
+      ]
+    }
+  },
+  "design-doc-reviewer": {
+    "title": "Design Doc Reviewer",
+    "description": "Guides architectural document reviews.",
+    "paths": {
+      "policies": [
+        "bundled/design-doc-reviewer/policies/readme.md"
+      ],
+      "personas": [
+        "bundled/design-doc-reviewer/personas/reviewer.md"
+      ]
+    }
+  }
+}

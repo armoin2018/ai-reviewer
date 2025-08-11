@@ -1,0 +1,31 @@
+{
+  "name": "file_contents",
+  "inference_description": "Fetch raw file contents for a list of paths at a given ref.",
+  "endpoint": "POST https://<your-domain>/file-contents",
+  "schema": {
+    "type": "object",
+    "required": [
+      "owner",
+      "repo",
+      "ref",
+      "paths"
+    ],
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "ref": {
+        "type": "string"
+      },
+      "paths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

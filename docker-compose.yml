@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  skillset:
+    image: armoin2018/copilot-skillset:v0.9.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8080
+      - GH_APP_ID=${GH_APP_ID}
+      - GH_APP_PRIVATE_KEY=${GH_APP_PRIVATE_KEY}
+    ports:
+      - "8080:8080"

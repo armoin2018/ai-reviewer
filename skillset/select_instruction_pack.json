@@ -1,0 +1,34 @@
+{
+  "name": "select_instruction_pack",
+  "inference_description": "Select a bundled pack and optionally merge with repo guidance (org|repo|merged).",
+  "endpoint": "POST https://<your-domain>/select-instruction-pack",
+  "schema": {
+    "type": "object",
+    "required": [
+      "packId"
+    ],
+    "properties": {
+      "packId": {
+        "type": "string"
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "org",
+          "repo",
+          "merged"
+        ],
+        "default": "merged"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "ref": {
+        "type": "string"
+      }
+    }
+  }
+}

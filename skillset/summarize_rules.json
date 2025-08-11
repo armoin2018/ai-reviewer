@@ -1,0 +1,19 @@
+{
+  "name": "summarize_rules",
+  "inference_description": "Summarize guidance markdown into a checklist of ASSERT rules.",
+  "endpoint": "POST https://<your-domain>/summarize-rules",
+  "schema": {
+    "type": "object",
+    "required": [
+      "markdown"
+    ],
+    "properties": {
+      "markdown": {
+        "type": "string"
+      },
+      "maxItems": {
+        "type": "integer"
+      }
+    }
+  }
+}

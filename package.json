@@ -1,0 +1,30 @@
+{
+  "name": "copilot-skillset-reviewer",
+  "version": "0.9.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p .",
+    "dev": "tsx src/server.ts",
+    "start": "node dist/server.js",
+    "mcp": "tsx src/mcp.ts",
+    "ext:install": "cd vscode-extension && npm i",
+    "ext:build": "cd vscode-extension && npm run build",
+    "ext:package": "cd vscode-extension && npm run package",
+    "pack:lint": "node scripts/pack-lint.mjs bundled/_template-pack"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2",
+    "jsonwebtoken": "^9.0.2",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.30"
+  },
+  "author": "Armoin LLC"
+}

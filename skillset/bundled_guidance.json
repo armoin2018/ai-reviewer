@@ -1,0 +1,13 @@
+{
+  "name": "bundled_guidance",
+  "inference_description": "List bundled instruction packs or fetch a specific pack via ?packId=\u2026",
+  "endpoint": "GET https://<your-domain>/bundled-guidance",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "packId": {
+        "type": "string"
+      }
+    }
+  }
+}
