@@ -10,14 +10,8 @@ test/** linguist-generated=true
 *.spec.* linguist-generated=true
 
 # Test data files should be treated as test content
-tests/**/*.json merge=ours
-tests/**/*.xml merge=ours
-tests/**/*.yml merge=ours
-tests/**/*.yaml merge=ours
-test/**/*.json merge=ours
-test/**/*.xml merge=ours
-test/**/*.yml merge=ours
-test/**/*.yaml merge=ours
+tests/**/*.* merge=ours
+test/**/*.* merge=ours
 
 # Mock and fixture files
 **/mocks/** linguist-generated=true
