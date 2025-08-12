@@ -132,12 +132,29 @@ paths:
 
   /summarize-rules:
     post:
-      summary: Generate rule summaries
+      summary: Generate intelligent rule summaries
       description: |
-        Generate actionable checklists from rule documents.
+        Generate actionable checklists from rule documents with advanced parsing and categorization.
 
-        Processes rule documents and extracts up to 400 actionable items
-        with prioritization and categorization.
+        Features:
+        - Extracts rules from multiple markdown formats ([ASSERT], [REQUIRE], [CHECK], etc.)
+        - Intelligent categorization by security, performance, testing, etc.
+        - Priority-based sorting (critical → high → medium → low)
+        - Context-aware rule processing with section header analysis
+        - Duplicate detection and filtering
+        - Performance caching for repeated requests
+        - Statistical analysis of rule distribution
+
+        Supported rule formats:
+        - [ASSERT] directives (critical security rules)
+        - [REQUIRE] directives (high-priority compliance)
+        - [CHECK] directives (medium-priority testing)
+        - [WARN] directives (low-priority style)
+        - MUST/SHALL statements (critical compliance)
+        - SHOULD/RECOMMENDED statements (high-priority compliance)
+        - Categorized bullet points (security, performance, testing, etc.)
+
+        Maximum 400 rules returned, prioritized by importance.
       operationId: summarizeRules
       tags:
         - Rules
@@ -154,6 +171,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SummarizeRulesResponse'
+              example:
+                checklist:
+                  - id: "R001"
+                    description: "forbid-pattern: (?i)password\\s*[:=]"
+                    priority: "critical"
+                    category: "security"
+                    source: "Baseline Secure Coding Policy"
+                  - id: "R002"
+                    description: "Ensure all API endpoints have proper authentication"
+                    priority: "high"
+                    category: "security"
+                    source: "Security Guidelines"
+                  - id: "R003"
+                    description: "Write unit tests for all new features"
+                    priority: "high"
+                    category: "testing"
+                    source: "Testing Standards"
+                statistics:
+                  total: 42
+                  byPriority:
+                    critical: 5
+                    high: 12
+                    medium: 18
+                    low: 7
+                  byCategory:
+                    security: 8
+                    performance: 6
+                    testing: 7
+                    compliance: 9
+                    style: 5
+                    licensing: 3
+                    documentation: 4
+                totalItems: 42
         '400':
           description: Invalid rule documents
           content:
@@ -163,16 +213,31 @@ paths:
 
   /normalize-diff:
     post:
-      summary: Parse and normalize diff
+      summary: Parse and normalize diff with comprehensive analysis
       description: |
-        Parse unified diff format and extract changed file information.
+        Parse unified diff format and extract detailed changed file information with advanced validation and analysis.
 
-        Supports:
-        - Git unified diff format
-        - Standard unified diff format  
-        - Configurable strip levels for path normalization
-        - Binary file detection
-        - File rename/move detection
+        Features:
+        - **Multi-format Support**: Git diff, standard unified diff, automatic format detection
+        - **Comprehensive Parsing**: File paths, line-by-line changes, hunk information, statistics
+        - **File Operations**: Creation, deletion, rename/move detection with old/new paths
+        - **Binary File Handling**: Detection and optional filtering of binary files
+        - **Configurable Processing**: Strip levels, file size limits, validation strictness
+        - **Line Number Tracking**: Accurate old/new line number assignment for each change
+        - **Error Handling**: Detailed validation with specific error messages and recovery
+        - **Performance Optimized**: Efficient parsing with configurable limits (1MB default)
+
+        Supported diff formats:
+        - Git unified diff (`diff --git a/file b/file`)
+        - Standard unified diff (`--- a/file +++ b/file`)
+        - Mixed formats with automatic detection
+
+        Advanced capabilities:
+        - Path normalization with configurable strip levels
+        - File operation detection (new, deleted, renamed, binary)
+        - Comprehensive statistics (additions, deletions, file counts)
+        - Validation with strict/lenient modes
+        - Edge case handling (empty files, large diffs, malformed input)
       operationId: normalizeDiff
       tags:
         - Diff Processing
@@ -182,6 +247,35 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/NormalizeDiffRequest'
+            examples:
+              basic_git_diff:
+                summary: Basic git diff
+                value:
+                  diff: |
+                    diff --git a/src/file.ts b/src/file.ts
+                    index 1234567..abcdefg 100644
+                    --- a/src/file.ts
+                    +++ b/src/file.ts
+                    @@ -1,3 +1,4 @@
+                     export function hello() {
+                    +  console.log('debug');
+                       return 'world';
+                     }
+              with_options:
+                summary: Diff with processing options
+                value:
+                  diff: |
+                    diff --git a/prefix/src/file.ts b/prefix/src/file.ts
+                    index 1234567..abcdefg 100644
+                    --- a/prefix/src/file.ts
+                    +++ b/prefix/src/file.ts
+                    @@ -1,1 +1,1 @@
+                    -old line
+                    +new line
+                  strip: 1
+                  maxFileSize: 2097152
+                  allowBinary: false
+                  strictValidation: true
       responses:
         '200':
           description: Diff normalized successfully
@@ -189,12 +283,65 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NormalizeDiffResponse'
+              examples:
+                successful_parse:
+                  summary: Successfully parsed diff
+                  value:
+                    files:
+                      - path: "src/file.ts"
+                        additions: 1
+                        deletions: 0
+                        binary: false
+                        renamed: false
+                        created: false
+                        deleted: false
+                        hunks:
+                          - header: "@@ -1,3 +1,4 @@"
+                            oldStart: 1
+                            oldLines: 3
+                            newStart: 1
+                            newLines: 4
+                            lines:
+                              - type: "context"
+                                content: "export function hello() {"
+                                oldLineNumber: 1
+                                newLineNumber: 1
+                              - type: "addition"
+                                content: "  console.log('debug');"
+                                newLineNumber: 2
+                              - type: "context"
+                                content: "  return 'world';"
+                                oldLineNumber: 2
+                                newLineNumber: 3
+                    totalAdditions: 1
+                    totalDeletions: 0
+                    totalFiles: 1
+                    stripLevel: 0
+                    format: "git"
+                    isValid: true
+                    errors: []
         '400':
-          description: Invalid diff format
+          description: Invalid diff format or validation failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                allOf:
+                  - $ref: '#/components/schemas/ApiError'
+                  - $ref: '#/components/schemas/NormalizeDiffResponse'
+              examples:
+                validation_failed:
+                  summary: Diff validation failed
+                  value:
+                    message: "Diff validation failed"
+                    code: "NORMALIZE_DIFF_FAILED"
+                    files: []
+                    totalAdditions: 0
+                    totalDeletions: 0
+                    totalFiles: 0
+                    stripLevel: 0
+                    format: "unknown"
+                    isValid: false
+                    errors: ["Unsupported or unrecognized diff format"]
 
   /assert-compliance:
     post:
@@ -235,6 +382,113 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
 
+  /bundled-guidance:
+    get:
+      summary: List or get bundled guidance packs
+      description: |
+        Returns all available bundled guidance packs or a specific pack if packId is provided.
+        
+        Available packs:
+        - baseline-secure: Minimal cross-language security and compliance assertions
+        - oss-apache-2: Require Apache-2 headers, block incompatible headers
+        - enterprise-strict: Strict directives for enterprise codebases
+        - pci-dss: Detect payment-card patterns and enforce PCI hygiene
+        - pii-redaction: Prevents PII leakage; requires masking and tests
+        - design-doc-reviewer: Guides architectural document reviews
+      operationId: getBundledGuidance
+      tags:
+        - Bundled Guidance
+      parameters:
+        - name: packId
+          in: query
+          description: Optional pack ID to get specific pack details
+          required: false
+          schema:
+            type: string
+            enum: [baseline-secure, oss-apache-2, enterprise-strict, pci-dss, pii-redaction, design-doc-reviewer]
+      responses:
+        '200':
+          description: Bundled guidance packs retrieved successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ListBundledResponse'
+                  - $ref: '#/components/schemas/BundledPack'
+              examples:
+                list_packs:
+                  summary: List all bundled packs
+                  value:
+                    packs:
+                      - id: "baseline-secure"
+                        title: "Baseline Secure Coding Policy"
+                        description: "Minimal cross-language security and compliance assertions."
+                        version: "1.0.0"
+                        policies: ["bundled/baseline-secure/policies/policy.md"]
+                        personas: ["bundled/baseline-secure/personas/reviewer.md"]
+                specific_pack:
+                  summary: Get specific bundled pack
+                  value:
+                    id: "baseline-secure"
+                    title: "Baseline Secure Coding Policy"
+                    description: "Minimal cross-language security and compliance assertions."
+                    version: "1.0.0"
+                    policies:
+                      - path: "bundled/baseline-secure/policies/policy.md"
+                        content: "# Security Policy..."
+                    personas:
+                      - path: "bundled/baseline-secure/personas/reviewer.md"
+                        content: "# Security Reviewer..."
+                    combinedMarkdown: "# Baseline Secure Coding Policy..."
+                    isValid: true
+                    validationErrors: []
+        '404':
+          description: Bundled pack not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /bundled-guidance/validate:
+    get:
+      summary: Validate all bundled guidance packs
+      description: |
+        Validates all bundled guidance packs for structural integrity and content validity.
+        
+        Checks for:
+        - Required metadata fields (title, description)
+        - File existence and accessibility
+        - Non-empty content files
+        - Valid pack structure
+      operationId: validateBundledGuidance
+      tags:
+        - Bundled Guidance
+      responses:
+        '200':
+          description: Validation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BundledPackValidationResponse'
+              example:
+                valid: ["baseline-secure", "oss-apache-2", "enterprise-strict"]
+                invalid:
+                  - packId: "pci-dss"
+                    errors: ["Pack pci-dss: file not found: bundled/pci-dss/policies/missing.md"]
+                total: 6
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
 components:
   securitySchemes:
     GitHubApp:
@@ -244,52 +498,6 @@ components:
       description: GitHub App JWT token for repository access
 
   schemas:
-    HealthResponse:
-      type: object
-      required:
-        - status
-        - timestamp
-        - version
-      properties:
-        status:
-          type: string
-          enum: [ok, degraded, error]
-          description: Service health status
-        timestamp:
-          type: string
-          format: date-time
-          description: Current server timestamp
-        version:
-          type: string
-          description: Application version
-        uptime:
-          type: number
-          description: Server uptime in seconds
-        dependencies:
-          type: object
-          description: Health status of external dependencies
-          additionalProperties:
-            type: string
-
-    ErrorResponse:
-      type: object
-      required:
-        - code
-        - message
-      properties:
-        code:
-          type: string
-          description: Machine-readable error code
-        message:
-          type: string
-          description: Human-readable error message
-        details:
-          type: object
-          description: Additional error context
-        traceId:
-          type: string
-          description: Request correlation ID for support
-
     LoadRulesRequest:
       type: object
       required:
@@ -423,48 +631,106 @@ components:
     SummarizeRulesResponse:
       type: object
       required:
-        - actionableItems
-        - summary
+        - checklist
+        - statistics
+        - totalItems
       properties:
-        actionableItems:
+        checklist:
           type: array
           items:
-            $ref: '#/components/schemas/ActionableItem'
+            $ref: '#/components/schemas/Rule'
           description: Generated actionable checklist items
-        summary:
-          type: string
-          description: Overall summary of rules
-        totalRules:
+        statistics:
+          $ref: '#/components/schemas/RuleStatistics'
+        totalItems:
           type: number
-          description: Total number of input rules processed
-        processingTime:
-          type: number
-          description: Processing time in milliseconds
+          description: Total number of rules generated
+          example: 42
 
-    ActionableItem:
+    Rule:
       type: object
       required:
         - id
         - description
         - priority
         - category
+        - source
       properties:
         id:
           type: string
-          description: Unique identifier for the item
+          description: Unique identifier for the rule
+          example: "R001"
         description:
           type: string
           description: Actionable description of what to check
+          example: "Ensure all API endpoints have proper authentication"
         priority:
           type: string
           enum: [critical, high, medium, low]
-          description: Priority level
+          description: Priority level for the rule
+          example: "high"
         category:
           type: string
-          description: Category (security, performance, style, etc.)
+          enum: [security, performance, style, testing, licensing, documentation, compliance]
+          description: Category classification
+          example: "security"
         source:
           type: string
-          description: Source rule that generated this item
+          description: Source section that generated this rule
+          example: "Security Guidelines"
+
+    RuleStatistics:
+      type: object
+      required:
+        - total
+        - byPriority
+        - byCategory
+      properties:
+        total:
+          type: number
+          description: Total number of rules
+          example: 42
+        byPriority:
+          type: object
+          properties:
+            critical:
+              type: number
+              example: 5
+            high:
+              type: number
+              example: 12
+            medium:
+              type: number
+              example: 18
+            low:
+              type: number
+              example: 7
+          description: Rule count breakdown by priority
+        byCategory:
+          type: object
+          properties:
+            security:
+              type: number
+              example: 8
+            performance:
+              type: number
+              example: 6
+            style:
+              type: number
+              example: 5
+            testing:
+              type: number
+              example: 7
+            licensing:
+              type: number
+              example: 3
+            documentation:
+              type: number
+              example: 4
+            compliance:
+              type: number
+              example: 9
+          description: Rule count breakdown by category
 
     NormalizeDiffRequest:
       type: object
@@ -473,77 +739,198 @@ components:
       properties:
         diff:
           type: string
-          description: Unified diff content to parse
-        stripLevel:
+          description: Unified diff content to parse (git or standard format)
+          example: |
+            diff --git a/src/file.ts b/src/file.ts
+            index 1234567..abcdefg 100644
+            --- a/src/file.ts
+            +++ b/src/file.ts
+            @@ -1,1 +1,2 @@
+             console.log('test');
+            +console.log('added');
+        strip:
           type: number
-          default: 1
-          description: Number of path components to strip
-        format:
-          type: string
-          enum: [git, unified]
-          default: git
-          description: Expected diff format
+          default: 0
+          minimum: 0
+          maximum: 10
+          description: Number of path components to strip from file paths
+          example: 1
+        maxFileSize:
+          type: number
+          default: 1048576
+          minimum: 1024
+          maximum: 10485760
+          description: Maximum diff size in bytes (1MB default, 10MB max)
+          example: 2097152
+        allowBinary:
+          type: boolean
+          default: true
+          description: Whether to allow binary files in diff processing
+          example: false
+        strictValidation:
+          type: boolean
+          default: false
+          description: Whether to use strict validation mode (fails on any errors)
+          example: true
 
     NormalizeDiffResponse:
       type: object
       required:
-        - success
         - files
+        - totalAdditions
+        - totalDeletions
+        - totalFiles
+        - stripLevel
+        - format
+        - isValid
+        - errors
       properties:
-        success:
-          type: boolean
-          description: Whether diff was parsed successfully
         files:
           type: array
           items:
-            $ref: '#/components/schemas/FileChange'
-          description: List of changed files
-        stats:
-          $ref: '#/components/schemas/DiffStats'
-          description: Diff statistics
-
-    FileChange:
-      type: object
-      required:
-        - path
-        - status
-      properties:
-        path:
-          type: string
-          description: File path relative to repository root
-        status:
-          type: string
-          enum: [added, modified, deleted, renamed]
-          description: Type of change
-        oldPath:
-          type: string
-          description: Original path for renamed files
-        additions:
+            $ref: '#/components/schemas/DiffFile'
+          description: List of changed files with detailed information
+        totalAdditions:
           type: number
-          description: Number of lines added
-        deletions:
+          description: Total number of lines added across all files
+          example: 42
+        totalDeletions:
           type: number
-          description: Number of lines deleted
-        isBinary:
-          type: boolean
-          description: Whether file is binary
-
-    DiffStats:
-      type: object
-      required:
-        - totalFiles
-        - additions
-        - deletions
-      properties:
+          description: Total number of lines deleted across all files
+          example: 13
         totalFiles:
           type: number
           description: Total number of files changed
+          example: 3
+        stripLevel:
+          type: number
+          description: Strip level applied to file paths
+          example: 1
+        format:
+          type: string
+          enum: [git, unified, unknown]
+          description: Detected diff format
+          example: "git"
+        isValid:
+          type: boolean
+          description: Whether the diff was parsed successfully
+          example: true
+        errors:
+          type: array
+          items:
+            type: string
+          description: List of validation errors or warnings
+          example: []
+
+    DiffFile:
+      type: object
+      required:
+        - path
+        - additions
+        - deletions
+        - binary
+        - renamed
+        - deleted
+        - created
+        - hunks
+      properties:
+        path:
+          type: string
+          description: File path (after strip level applied)
+          example: "src/components/Button.tsx"
+        oldPath:
+          type: string
+          description: Original file path (for renamed files)
+          example: "src/components/OldButton.tsx"
         additions:
           type: number
-          description: Total lines added
+          description: Number of lines added in this file
+          example: 15
         deletions:
           type: number
-          description: Total lines deleted
+          description: Number of lines deleted in this file
+          example: 3
+        binary:
+          type: boolean
+          description: Whether this is a binary file
+          example: false
+        renamed:
+          type: boolean
+          description: Whether this file was renamed or moved
+          example: false
+        deleted:
+          type: boolean
+          description: Whether this file was deleted
+          example: false
+        created:
+          type: boolean
+          description: Whether this file was newly created
+          example: false
+        hunks:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffHunk'
+          description: List of change hunks in this file
+
+    DiffHunk:
+      type: object
+      required:
+        - header
+        - oldStart
+        - oldLines
+        - newStart
+        - newLines
+        - lines
+      properties:
+        header:
+          type: string
+          description: Hunk header line (e.g., "@@ -1,3 +1,4 @@")
+          example: "@@ -10,5 +10,6 @@ function handleClick() {"
+        oldStart:
+          type: number
+          description: Starting line number in old file
+          example: 10
+        oldLines:
+          type: number
+          description: Number of lines from old file in this hunk
+          example: 5
+        newStart:
+          type: number
+          description: Starting line number in new file
+          example: 10
+        newLines:
+          type: number
+          description: Number of lines from new file in this hunk
+          example: 6
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffLine'
+          description: Individual lines in this hunk
+
+    DiffLine:
+      type: object
+      required:
+        - type
+        - content
+      properties:
+        type:
+          type: string
+          enum: [context, addition, deletion]
+          description: Type of line change
+          example: "addition"
+        content:
+          type: string
+          description: Line content (without +/- prefix)
+          example: "  console.log('debug information');"
+        oldLineNumber:
+          type: number
+          description: Line number in old file (not present for additions)
+          example: 15
+        newLineNumber:
+          type: number
+          description: Line number in new file (not present for deletions)
+          example: 16
         netChanges:
           type: number
           description: Net change in lines (additions - deletions)
@@ -779,6 +1166,156 @@ components:
           description: Deployment environment
           example: "production"
 
+    BundledPackSummary:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - version
+        - policies
+        - personas
+      properties:
+        id:
+          type: string
+          description: Unique pack identifier
+          example: "baseline-secure"
+        title:
+          type: string
+          description: Human-readable pack title
+          example: "Baseline Secure Coding Policy"
+        description:
+          type: string
+          description: Pack description
+          example: "Minimal cross-language security and compliance assertions."
+        version:
+          type: string
+          description: Pack version
+          example: "1.0.0"
+        policies:
+          type: array
+          items:
+            type: string
+          description: Policy file paths
+          example: ["bundled/baseline-secure/policies/policy.md"]
+        personas:
+          type: array
+          items:
+            type: string
+          description: Persona file paths
+          example: ["bundled/baseline-secure/personas/reviewer.md"]
+
+    BundledPack:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - version
+        - policies
+        - personas
+        - combinedMarkdown
+        - isValid
+        - validationErrors
+      properties:
+        id:
+          type: string
+          description: Unique pack identifier
+          example: "baseline-secure"
+        title:
+          type: string
+          description: Human-readable pack title
+          example: "Baseline Secure Coding Policy"
+        description:
+          type: string
+          description: Pack description
+          example: "Minimal cross-language security and compliance assertions."
+        version:
+          type: string
+          description: Pack version
+          example: "1.0.0"
+        policies:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                description: Policy file path
+              content:
+                type: string
+                description: Policy file content
+          description: Policy files with content
+        personas:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                description: Persona file path
+              content:
+                type: string
+                description: Persona file content
+          description: Persona files with content
+        combinedMarkdown:
+          type: string
+          description: Combined markdown content of all pack files
+          example: "# Baseline Secure Coding Policy\n\n..."
+        isValid:
+          type: boolean
+          description: Whether the pack passed validation
+          example: true
+        validationErrors:
+          type: array
+          items:
+            type: string
+          description: Validation error messages (empty if valid)
+          example: []
+
+    ListBundledResponse:
+      type: object
+      required:
+        - packs
+      properties:
+        packs:
+          type: array
+          items:
+            $ref: '#/components/schemas/BundledPackSummary'
+          description: Available bundled packs
+
+    BundledPackValidationResponse:
+      type: object
+      required:
+        - valid
+        - invalid
+        - total
+      properties:
+        valid:
+          type: array
+          items:
+            type: string
+          description: Pack IDs that passed validation
+          example: ["baseline-secure", "oss-apache-2"]
+        invalid:
+          type: array
+          items:
+            type: object
+            properties:
+              packId:
+                type: string
+                description: Pack ID that failed validation
+              errors:
+                type: array
+                items:
+                  type: string
+                description: Validation error messages
+          description: Packs that failed validation with error details
+        total:
+          type: integer
+          description: Total number of packs validated
+          example: 6
+
 tags:
   - name: Health
     description: Health check endpoints
@@ -788,3 +1325,5 @@ tags:
     description: Diff parsing and normalization
   - name: Compliance
     description: Compliance checking and validation
+  - name: Bundled Guidance
+    description: Bundled guidance pack management and validation

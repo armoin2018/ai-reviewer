@@ -1,36 +1,142 @@
 /**
- * Integration Test Example
- * Tests API endpoints and server integration once implemented
+ * Integration Tests for API endpoints and server functionality
+ * Critical tests for production readiness
  */
 
+import request from 'supertest';
 import { MOCK_GITHUB_RESPONSES, TEST_CONFIG } from '../setup';
 
+// Import the app for testing
+let app: any;
+
+beforeAll(async () => {
+  // Dynamically import the server to avoid ES module issues
+  const { default: server } = await import('../../src/server.js');
+  app = server;
+});
+
 describe('API Integration Tests', () => {
-  // Note: These tests will be implemented once the Express server is created
-  // For now, they serve as examples of the testing patterns we'll use
-
   describe('Health Check Endpoint', () => {
-    it.todo('should respond with 200 OK for health check');
-    it.todo('should return service status information');
+    it('should respond with 200 OK for health check', async () => {
+      const response = await request(app)
+        .get('/healthz')
+        .expect(200);
+      
+      expect(response.body).toMatchObject({
+        status: 'healthy',
+        timestamp: expect.any(String)
+      });
+    });
+
+    it('should return service status information', async () => {
+      const response = await request(app)
+        .get('/healthz')
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('uptime');
+      expect(response.body).toHaveProperty('memory');
+      expect(response.body).toHaveProperty('version');
+      expect(typeof response.body.uptime).toBe('number');
+    });
   });
 
-  describe('GitHub Webhook Endpoint', () => {
-    it.todo('should accept valid GitHub webhook payloads');
-    it.todo('should validate webhook signatures');
-    it.todo('should process pull request events');
-    it.todo('should handle installation events');
+  describe('Core API Endpoints', () => {
+    it('should serve OpenAPI documentation', async () => {
+      const response = await request(app)
+        .get('/api-docs')
+        .expect(200);
+      
+      expect(response.text).toContain('Copilot Skillset Reviewer API');
+    });
+
+    it('should handle CORS preflight requests', async () => {
+      const response = await request(app)
+        .options('/healthz')
+        .set('Origin', 'http://localhost:3000')
+        .set('Access-Control-Request-Method', 'GET')
+        .expect(204);
+      
+      expect(response.headers['access-control-allow-origin']).toBeTruthy();
+    });
+
+    it('should return 404 for unknown endpoints', async () => {
+      await request(app)
+        .get('/nonexistent-endpoint')
+        .expect(404);
+    });
   });
 
-  describe('MCP Server Integration', () => {
-    it.todo('should start MCP server successfully');
-    it.todo('should handle skillset analysis requests');
-    it.todo('should return structured analysis results');
+  describe('Diff Processing Endpoint', () => {
+    it('should normalize simple diff successfully', async () => {
+      const testDiff = `--- a/test.js
++++ b/test.js
+@@ -1,1 +1,2 @@
+ line1
++line2`;
+
+      const response = await request(app)
+        .post('/normalize-diff')
+        .send({ diff: testDiff })
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('files');
+      expect(response.body.files).toHaveLength(1);
+      expect(response.body.files[0]).toMatchObject({
+        path: 'test.js',
+        oldPath: 'test.js',
+        created: false,
+        deleted: false,
+        renamed: false
+      });
+    });
+
+    it('should handle malformed diff gracefully', async () => {
+      const response = await request(app)
+        .post('/normalize-diff')
+        .send({ diff: 'invalid diff content' })
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('files');
+      expect(response.body.files).toHaveLength(0);
+    });
   });
 
-  describe('Authentication', () => {
-    it.todo('should validate GitHub App JWT tokens');
-    it.todo('should handle installation access tokens');
-    it.todo('should reject invalid authentication');
+  describe('Rule Management Endpoints', () => {
+    it('should load bundled guidance packs', async () => {
+      const response = await request(app)
+        .get('/bundled-guidance')
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('packs');
+      expect(Array.isArray(response.body.packs)).toBe(true);
+      expect(response.body.packs.length).toBeGreaterThan(0);
+    });
+
+    it('should summarize rules from guidance text', async () => {
+      const testGuidance = `
+# Test Guidance
+
+[ASSERT] All code must have tests
+[REQUIRE] License headers in all files
+[CHECK] No secrets in code
+
+## Security Rules
+
+- MUST validate all inputs
+- SHOULD use HTTPS
+- MAY implement rate limiting
+      `;
+
+      const response = await request(app)
+        .post('/summarize-rules')
+        .send({ guidanceText: testGuidance })
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('rules');
+      expect(response.body).toHaveProperty('statistics');
+      expect(Array.isArray(response.body.rules)).toBe(true);
+      expect(response.body.rules.length).toBeGreaterThan(0);
+    });
   });
 });
 

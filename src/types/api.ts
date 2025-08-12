@@ -82,8 +82,23 @@ export interface LoadRulesResponse {
 }
 
 // Summarize rules response type  
+export interface Rule {
+  id: string;
+  description: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  category: 'security' | 'performance' | 'style' | 'testing' | 'licensing' | 'documentation' | 'compliance';
+  source: string;
+}
+
+export interface RuleStatistics {
+  total: number;
+  byPriority: Record<Rule['priority'], number>;
+  byCategory: Record<Rule['category'], number>;
+}
+
 export interface SummarizeRulesResponse {
-  checklist: string[];
+  checklist: Rule[];
+  statistics: RuleStatistics;
   totalItems: number;
 }
 
@@ -92,22 +107,44 @@ export interface InferQualityGatesResponse {
   recommendedCommands: string[];
 }
 
-// Normalize diff response type
+// Normalize diff response type - enhanced structure
+export interface DiffLine {
+  type: 'context' | 'addition' | 'deletion';
+  content: string;
+  oldLineNumber?: number;
+  newLineNumber?: number;
+}
+
+export interface DiffHunk {
+  header: string;
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: DiffLine[];
+}
+
+export interface DiffFile {
+  path: string;
+  oldPath?: string;
+  additions: number;
+  deletions: number;
+  binary: boolean;
+  renamed: boolean;
+  deleted: boolean;
+  created: boolean;
+  hunks: DiffHunk[];
+}
+
 export interface NormalizeDiffResponse {
-  files: Array<{
-    path: string;
-    additions: number;
-    deletions: number;
-    binary: boolean;
-    hunks: Array<{
-      header: string;
-      lines: Array<{
-        type: 'context' | 'addition' | 'deletion';
-        number: number;
-        content: string;
-      }>;
-    }>;
-  }>;
+  files: DiffFile[];
+  totalAdditions: number;
+  totalDeletions: number;
+  totalFiles: number;
+  stripLevel: number;
+  format: 'git' | 'unified' | 'unknown';
+  isValid: boolean;
+  errors: string[];
 }
 
 // Assert compliance response type
@@ -142,16 +179,30 @@ export interface BundledPack {
   title: string;
   description: string;
   version: string;
+  policies: Array<{ path: string; content: string }>;
+  personas: Array<{ path: string; content: string }>;
   combinedMarkdown: string;
+  isValid: boolean;
+  validationErrors: string[];
+}
+
+export interface BundledPackSummary {
+  id: string;
+  title: string;
+  description: string;
+  version: string;
+  policies: string[];
+  personas: string[];
 }
 
 export interface ListBundledResponse {
-  packs: Array<{
-    id: string;
-    title: string;
-    description: string;
-    version: string;
-  }>;
+  packs: BundledPackSummary[];
+}
+
+export interface BundledPackValidationResponse {
+  valid: string[];
+  invalid: Array<{ packId: string; errors: string[] }>;
+  total: number;
 }
 
 export interface SelectInstructionPackResponse {

@@ -6,3 +6,6 @@
 - ability to add or update instructions and personas
 
 # Build in .claude/commands into skillset to be used with GitHub CoPilot, Cursor, WindSurf and Claude
+
+# Fix .copilot path
+* Change .copilot references to .github for repo specific requirements.

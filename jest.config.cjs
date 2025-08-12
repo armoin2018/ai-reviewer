@@ -1,10 +1,19 @@
 /** @type {import('jest').Config} */
 module.exports = {
-  // Use ts-jest preset for TypeScript support
-  preset: 'ts-jest',
+  // Use ts-jest preset for TypeScript support with ES modules
+  preset: 'ts-jest/presets/default-esm',
   
   // Test environment - Node.js for backend testing
   testEnvironment: 'node',
+  
+  // Configure ES modules support
+  extensionsToTreatAsEsm: ['.ts'],
+  
+  // Module name mapping for .js imports to .ts files
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^node-fetch$': '<rootDir>/node_modules/node-fetch/lib/index.js'
+  },
   
   // Root directory for tests and source files
   rootDir: '.',
@@ -50,8 +59,13 @@ module.exports = {
   
   // Transform files with ts-jest
   transform: {
-    '^.+\\.ts$': 'ts-jest'
+    '^.+\\.ts$': ['ts-jest', { useESM: true }]
   },
+  
+  // Transform node_modules that use ES modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(node-fetch|fetch-blob|data-uri-to-buffer|formdata-polyfill|@types)/)'
+  ],
   
   // Setup files to run before each test
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],

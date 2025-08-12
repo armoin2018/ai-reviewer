@@ -2,11 +2,22 @@ import express, { Request, Response, NextFunction } from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
-import { summarizeRules } from './rules.js';
+import { summarizeRules, getRuleStatistics } from './rules.js';
 import { normalizeUnifiedDiff } from './diff.js';
 import { assertCompliance } from './assert.js';
+import { scanDiffForSecrets, scanFiles, getDefaultSecretPatterns, validateSecretPattern, SecretScanOptions } from './secrets.js';
+import { validateLicenseHeaders, getDefaultLicenseTemplates, generateLicenseHeader, checkLicenseCompatibility, LicenseValidationOptions } from './license.js';
+import { 
+  readMainInstructions, 
+  listClaudeDirectory, 
+  readClaudeFile, 
+  writeClaudeFile, 
+  deleteClaudeFile, 
+  executeBatchOperations, 
+  discoverCommands 
+} from './claude-directory.js';
 import { getFileContents, loadRules } from './github.js';
-import { getBundledPack, listBundled } from './bundled.js';
+import { getBundledPack, listBundled, validateAllBundledPacks } from './bundled.js';
 import { 
   ErrorCode, 
   ApiError, 
@@ -18,8 +29,40 @@ import {
   FileContentsRequest,
   SelectInstructionPackRequest
 } from './types/api.js';
+import {
+  apiRateLimit,
+  strictRateLimit,
+  securityHeaders,
+  sanitizeInput,
+  enforceHttps,
+  auditLog,
+  validateLoadRules,
+  validateSummarizeRules,
+  validateNormalizeDiff,
+  validateAssertCompliance,
+  validateFileContents,
+  validateSelectInstructionPack
+} from './middleware/security.js';
+import {
+  performanceMonitor,
+  getPerformanceMetrics,
+  getHealthWithPerformance,
+  generateLogSummary
+} from './middleware/performance.js';
 
 const app = express();
+
+// Enable trust proxy for rate limiting and IP detection behind reverse proxy
+app.set('trust proxy', 1);
+
+// HTTPS enforcement (production only)
+app.use(enforceHttps);
+
+// Security headers
+app.use(securityHeaders);
+
+// Global rate limiting
+app.use(apiRateLimit);
 
 // Request correlation ID middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -55,27 +98,26 @@ app.use(cors({
 // JSON body parser with 10MB limit
 app.use(bodyParser.json({ limit: '10mb' }));
 
-// Health check endpoint - optimized for <100ms response
-app.get('/healthz', (_req: Request, res: Response) => {
-  const response: HealthCheckResponse = {
-    ok: true, 
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: process.env.npm_package_version || '0.9.0',
-    environment: process.env.NODE_ENV || 'development'
-  };
-  res.json(response);
-});
+// Input sanitization
+app.use(sanitizeInput);
 
-app.post('/load-rules', async (req: Request, res: Response, next: NextFunction) => {
+// Performance monitoring
+app.use(performanceMonitor);
+
+// Health check endpoint - optimized for <100ms response
+app.get('/healthz', getHealthWithPerformance);
+
+// Performance monitoring endpoints
+app.get('/metrics', getPerformanceMetrics);
+app.get('/logs/summary', generateLogSummary);
+
+app.post('/load-rules', 
+  auditLog('LOAD_RULES'),
+  strictRateLimit,
+  ...validateLoadRules, 
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { owner, repo, ref } = req.body ?? {};
-    if (!owner || !repo || !ref) {
-      const error = new Error('owner, repo, ref required');
-      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
-      (error as any).status = 400;
-      return next(error);
-    }
+    const { owner, repo, ref } = req.body;
     const guidance = await loadRules({ owner, repo, ref });
     return res.json(guidance);
   } catch (e: any) {
@@ -85,16 +127,20 @@ app.post('/load-rules', async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
-app.post('/summarize-rules', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/summarize-rules', 
+  auditLog('SUMMARIZE_RULES'),
+  ...validateSummarizeRules,
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { markdown, maxItems = 200 } = req.body ?? {};
-    if (typeof markdown !== 'string') {
-      const error = new Error('markdown required');
-      (error as any).code = ErrorCode.INVALID_MARKDOWN_FIELD;
-      (error as any).status = 400;
-      return next(error);
-    }
-    return res.json({ checklist: summarizeRules(markdown, maxItems) });
+    const { markdown, maxItems = 400 } = req.body;
+    const checklist = summarizeRules(markdown, maxItems);
+    const statistics = getRuleStatistics(checklist);
+    
+    return res.json({ 
+      checklist, 
+      statistics,
+      totalItems: checklist.length 
+    });
   } catch (e: any) {
     e.code = e.code || ErrorCode.SUMMARIZE_RULES_FAILED;
     e.status = e.status || 500;
@@ -102,7 +148,9 @@ app.post('/summarize-rules', async (req: Request, res: Response, next: NextFunct
   }
 });
 
-app.post('/infer-quality-gates', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/infer-quality-gates', 
+  auditLog('INFER_QUALITY_GATES'),
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
     const files = (req.body?.files || []).map((f: any) => f.path);
     const has = (re: RegExp) => files.some((p: string) => re.test(p));
@@ -127,16 +175,36 @@ app.post('/infer-quality-gates', async (req: Request, res: Response, next: NextF
   }
 });
 
-app.post('/normalize-diff', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/normalize-diff', 
+  auditLog('NORMALIZE_DIFF'),
+  ...validateNormalizeDiff,
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { diff, strip = 0 } = req.body ?? {};
-    if (!diff) {
-      const error = new Error('diff required');
-      (error as any).code = ErrorCode.MISSING_DIFF_FIELD;
-      (error as any).status = 400;
-      return next(error);
+    const { 
+      diff, 
+      strip = 0, 
+      maxFileSize = 1024 * 1024, // 1MB default
+      allowBinary = true,
+      strictValidation = false 
+    } = req.body;
+    
+    const result = normalizeUnifiedDiff(diff, {
+      stripLevel: strip,
+      maxFileSize,
+      allowBinary,
+      strictValidation
+    });
+    
+    // Set appropriate HTTP status based on validation result
+    if (!result.isValid && strictValidation) {
+      return res.status(400).json({
+        ...result,
+        message: 'Diff validation failed',
+        code: ErrorCode.NORMALIZE_DIFF_FAILED
+      });
     }
-    return res.json(normalizeUnifiedDiff(diff, strip));
+    
+    return res.json(result);
   } catch (e: any) {
     e.code = e.code || ErrorCode.NORMALIZE_DIFF_FAILED;
     e.status = e.status || 500;
@@ -144,7 +212,11 @@ app.post('/normalize-diff', async (req: Request, res: Response, next: NextFuncti
   }
 });
 
-app.post('/assert-compliance', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/assert-compliance', 
+  auditLog('ASSERT_COMPLIANCE'),
+  strictRateLimit,
+  ...validateAssertCompliance,
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
     const {
       diff,
@@ -156,13 +228,7 @@ app.post('/assert-compliance', async (req: Request, res: Response, next: NextFun
       ref,
       prLabels = [],
       prTitle = '',
-    } = req.body ?? {};
-    if (!diff) {
-      const error = new Error('diff required');
-      (error as any).code = ErrorCode.MISSING_DIFF_FIELD;
-      (error as any).status = 400;
-      return next(error);
-    }
+    } = req.body;
     let effectiveChecklist = checklist;
     let guidanceMarkdown = '';
     if ((!effectiveChecklist || effectiveChecklist.length === 0) && owner && repo && ref) {
@@ -212,15 +278,13 @@ app.post('/assert-compliance', async (req: Request, res: Response, next: NextFun
   }
 });
 
-app.post('/file-contents', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/file-contents', 
+  auditLog('FILE_CONTENTS'),
+  strictRateLimit,
+  ...validateFileContents,
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { owner, repo, ref, paths } = req.body ?? {};
-    if (!owner || !repo || !ref || !Array.isArray(paths)) {
-      const error = new Error('owner, repo, ref, paths[] required');
-      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
-      (error as any).status = 400;
-      return next(error);
-    }
+    const { owner, repo, ref, paths } = req.body;
     const contents = await getFileContents({ owner, repo, ref, paths });
     return res.json({ contents, count: Object.keys(contents).length });
   } catch (e: any) {
@@ -230,7 +294,9 @@ app.post('/file-contents', async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-app.get('/bundled-guidance', async (req: Request, res: Response, next: NextFunction) => {
+app.get('/bundled-guidance', 
+  auditLog('BUNDLED_GUIDANCE'),
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
     const packId = (req.query.packId as string) || '';
     if (packId) return res.json(getBundledPack(packId));
@@ -242,15 +308,25 @@ app.get('/bundled-guidance', async (req: Request, res: Response, next: NextFunct
   }
 });
 
-app.post('/select-instruction-pack', async (req: Request, res: Response, next: NextFunction) => {
+app.get('/bundled-guidance/validate', 
+  auditLog('BUNDLED_GUIDANCE_VALIDATE'),
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { packId, owner, repo, ref, mode = 'merged' } = req.body ?? {};
-    if (!packId) {
-      const error = new Error('packId required');
-      (error as any).code = ErrorCode.MISSING_PACK_ID;
-      (error as any).status = 400;
-      return next(error);
-    }
+    const validation = validateAllBundledPacks();
+    return res.json(validation);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.BUNDLED_GUIDANCE_FAILED;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.post('/select-instruction-pack', 
+  auditLog('SELECT_INSTRUCTION_PACK'),
+  ...validateSelectInstructionPack,
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { packId, owner, repo, ref, mode = 'merged' } = req.body;
     const pack = getBundledPack(packId);
     let combined = pack.combinedMarkdown;
     let files: string[] = [];
@@ -275,9 +351,312 @@ app.post('/select-instruction-pack', async (req: Request, res: Response, next: N
   }
 });
 
+app.post('/scan-secrets',
+  auditLog('SCAN_SECRETS'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { diff, files, options = {} } = req.body;
+    
+    if (!diff && !files) {
+      const error = new Error('Either diff or files must be provided');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    let result;
+    if (diff) {
+      result = scanDiffForSecrets(diff, options as SecretScanOptions);
+    } else {
+      result = scanFiles(files, options as SecretScanOptions);
+    }
+    
+    return res.json(result);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.get('/secret-patterns',
+  auditLog('GET_SECRET_PATTERNS'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const patterns = getDefaultSecretPatterns();
+    return res.json({ patterns, count: patterns.length });
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.post('/validate-secret-pattern',
+  auditLog('VALIDATE_SECRET_PATTERN'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { pattern } = req.body;
+    
+    if (!pattern) {
+      const error = new Error('Pattern is required');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    const validation = validateSecretPattern(pattern);
+    return res.json(validation);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.post('/validate-license-headers',
+  auditLog('VALIDATE_LICENSE_HEADERS'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { files, options = {} } = req.body;
+    
+    if (!files || !Array.isArray(files)) {
+      const error = new Error('Files array is required');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    const result = validateLicenseHeaders(files, options as LicenseValidationOptions);
+    return res.json(result);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.get('/license-templates',
+  auditLog('GET_LICENSE_TEMPLATES'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const templates = getDefaultLicenseTemplates();
+    return res.json({ templates, count: templates.length });
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.post('/generate-license-header',
+  auditLog('GENERATE_LICENSE_HEADER'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { filePath, licenseId, copyrightHolder, year } = req.body;
+    
+    if (!filePath || !licenseId || !copyrightHolder) {
+      const error = new Error('filePath, licenseId, and copyrightHolder are required');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    const templates = getDefaultLicenseTemplates();
+    const template = templates.find(t => t.spdxId === licenseId);
+    
+    if (!template) {
+      const error = new Error(`License template not found: ${licenseId}`);
+      (error as any).status = 404;
+      (error as any).code = ErrorCode.ENDPOINT_NOT_FOUND;
+      return next(error);
+    }
+    
+    const header = generateLicenseHeader(filePath, template, copyrightHolder, year);
+    return res.json({ 
+      header, 
+      template: template,
+      filePath,
+      copyrightHolder,
+      year: year || new Date().getFullYear()
+    });
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.post('/check-license-compatibility',
+  auditLog('CHECK_LICENSE_COMPATIBILITY'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { license1, license2 } = req.body;
+    
+    if (!license1 || !license2) {
+      const error = new Error('Both license1 and license2 are required');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    const compatibility = checkLicenseCompatibility(license1, license2);
+    return res.json(compatibility);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+// .claude Directory Management Endpoints
+app.get('/claude-instructions',
+  auditLog('READ_CLAUDE_INSTRUCTIONS'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const instructions = await readMainInstructions();
+    return res.json(instructions);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.get('/claude-directory',
+  auditLog('LIST_CLAUDE_DIRECTORY'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const directory = await listClaudeDirectory();
+    return res.json(directory);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.get('/claude-file',
+  auditLog('READ_CLAUDE_FILE'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filePath = req.query.path as string;
+    
+    if (!filePath) {
+      const error = new Error('File path is required');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    const file = await readClaudeFile(filePath);
+    return res.json(file);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.post('/claude-file',
+  auditLog('WRITE_CLAUDE_FILE'),
+  strictRateLimit,
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { filePath, content } = req.body;
+    
+    if (!filePath || !content) {
+      const error = new Error('File path and content are required');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    await writeClaudeFile(filePath, content);
+    return res.json({ 
+      success: true, 
+      message: `File written: ${filePath}`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.delete('/claude-file',
+  auditLog('DELETE_CLAUDE_FILE'),
+  strictRateLimit,
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filePath = req.query.path as string;
+    
+    if (!filePath) {
+      const error = new Error('File path is required');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    await deleteClaudeFile(filePath);
+    return res.json({ 
+      success: true, 
+      message: `File deleted: ${filePath}`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.post('/claude-batch-operations',
+  auditLog('CLAUDE_BATCH_OPERATIONS'),
+  strictRateLimit,
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { operations } = req.body;
+    
+    if (!Array.isArray(operations)) {
+      const error = new Error('Operations array is required');
+      (error as any).status = 400;
+      (error as any).code = ErrorCode.MISSING_REQUIRED_FIELDS;
+      return next(error);
+    }
+    
+    const result = await executeBatchOperations(operations);
+    return res.json(result);
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
+app.get('/claude-commands',
+  auditLog('DISCOVER_CLAUDE_COMMANDS'),
+  async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const commands = await discoverCommands();
+    return res.json({ 
+      commands, 
+      count: commands.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e: any) {
+    e.code = e.code || ErrorCode.INTERNAL_SERVER_ERROR;
+    e.status = e.status || 500;
+    return next(e);
+  }
+});
+
 // Error handling middleware (must be last)
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  const correlationId = req.headers['x-correlation-id'] || 'unknown';
+  const correlationId = (Array.isArray(req.headers['x-correlation-id']) 
+    ? req.headers['x-correlation-id'][0] 
+    : req.headers['x-correlation-id']) || 'unknown';
   const timestamp = new Date().toISOString();
   
   console.error(`[${timestamp}] ${correlationId} ERROR:`, err.message, err.stack);
@@ -299,7 +678,9 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 // 404 handler
 app.use((req: Request, res: Response) => {
-  const correlationId = req.headers['x-correlation-id'] || 'unknown';
+  const correlationId = (Array.isArray(req.headers['x-correlation-id']) 
+    ? req.headers['x-correlation-id'][0] 
+    : req.headers['x-correlation-id']) || 'unknown';
   const errorResponse: ApiError = {
     error: {
       code: ErrorCode.ENDPOINT_NOT_FOUND,
@@ -311,8 +692,16 @@ app.use((req: Request, res: Response) => {
   res.status(404).json(errorResponse);
 });
 
-const port = Number(process.env.PORT || 8080);
-app.listen(port, () => {
-  console.log(`[${new Date().toISOString()}] [skillset] Server listening on port ${port}`);
-  console.log(`[${new Date().toISOString()}] [skillset] Health check available at http://localhost:${port}/healthz`);
-});
+// Export the app for testing
+export default app;
+
+// Start server only if this file is run directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const port = Number(process.env.PORT || 8080);
+  app.listen(port, () => {
+    console.log(`[${new Date().toISOString()}] [skillset] Server listening on port ${port}`);
+    console.log(`[${new Date().toISOString()}] [skillset] Health check available at http://localhost:${port}/healthz`);
+  });
+}
+
+export { app };

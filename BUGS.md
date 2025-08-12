@@ -56,13 +56,151 @@ This file tracks bugs and issues identified during development of the Copilot Sk
 
 ## Active Bugs
 
-_[No active bugs currently - this section will be populated as issues are identified]_
+## BUG-2025.08.12-001 - VS Code Extension TypeScript Build Issues
+
+**Date**: 2025-08-12  
+**Priority**: Medium  
+**Category**: Integration  
+**Reported By**: Implementation Engineer  
+**Status**: Open  
+**Assigned To**: `vscode-extension-developer.md`
+
+### Description
+
+VS Code extension build fails due to TypeScript configuration conflicts when importing from main project files. Root cause is the `rootDir` restriction in tsconfig.json preventing cross-directory imports.
+
+### Steps to Reproduce
+
+1. Navigate to vscode-extension directory
+2. Run `npm run build`
+3. Observe TypeScript compilation errors about files not under 'rootDir'
+
+### Expected Behavior
+
+Extension should build successfully with access to main project lib.ts exports.
+
+### Actual Behavior
+
+Build fails with TS6059 errors about files not being under rootDir.
+
+### Environment
+
+- OS: macOS Darwin 24.6.0
+- Node.js: Current project version
+- VS Code: ^1.85.0
+- TypeScript: ^5.5.4
+
+### Impact Assessment
+
+- VS Code extension enhanced functionality cannot be tested
+- Deployment of extension updates blocked
+- Users cannot access new .claude directory management features via VS Code
+
+### Fix Approach
+
+1. Update vscode-extension tsconfig.json to allow parent directory imports
+2. Add proper type declarations for VS Code API
+3. Configure module resolution for cross-project dependencies
+4. Consider using build output from main project instead of source imports
+
+### Workaround
+
+Extension functionality can be accessed via HTTP API mode by setting `skillset.serverMode` to `"http"` in VS Code settings.
+
+### Related Requirements
+
+- R6: VS Code Extension functionality
+- R7: Multi-IDE support
 
 ---
 
 ## Fixed Bugs
 
-_[This section will be populated as bugs are resolved]_
+### BUG-2025.08.12-002 - Unified Diff Path Extraction Bug
+
+**Date**: 2025-08-12  
+**Priority**: High  
+**Category**: Functionality  
+**Reported By**: Implementation Engineer  
+**Status**: Fixed  
+**Assigned To**: `senior-nodejs-developer.md`
+
+#### Description
+
+Unified diff format parser was not properly stripping 'a/' and 'b/' prefixes from file paths, causing tests to fail and incorrect path extraction.
+
+#### Steps to Reproduce
+
+1. Parse a unified diff with format `--- a/test.js` and `+++ b/test.js`
+2. Check the extracted file path 
+3. Path would be "b/test.js" instead of "test.js"
+
+#### Expected Behavior
+
+File path should be extracted as "test.js" after stripping standard prefixes.
+
+#### Actual Behavior
+
+File path was "b/test.js" including the prefix.
+
+#### Fix Applied
+
+- Updated `parseUnifiedDiff` function in `src/diff.ts` to strip 'a/' and 'b/' prefixes
+- Added regex replacement: `cleanPath = pathMatch[1].replace(/^[ab]\//, '')`
+- All tests now pass with correct path extraction
+
+#### Impact Assessment
+
+- Diff processing accuracy improved
+- Test suite now passes completely  
+- Better compatibility with standard diff tools
+
+#### Related Requirements
+
+- R3.2: Extract changed file paths accurately
+
+### BUG-2025.08.12-003 - TypeScript Type Errors in GitHub Checks
+
+**Date**: 2025-08-12  
+**Priority**: Medium  
+**Category**: Functionality  
+**Reported By**: Implementation Engineer  
+**Status**: Fixed  
+**Assigned To**: `senior-nodejs-developer.md`
+
+#### Description
+
+TypeScript compiler was reporting 'result' is of type 'unknown' errors in github-checks.ts due to missing type annotations for API response parsing.
+
+#### Steps to Reproduce
+
+1. Run TypeScript compilation with `npm run typecheck`
+2. Observe TS18046 errors in github-checks.ts lines 167, 170, 171, 226, 229, 230, 296, 299, 300
+
+#### Expected Behavior
+
+TypeScript should compile without errors with proper type safety.
+
+#### Actual Behavior
+
+TypeScript reported unknown type errors preventing compilation.
+
+#### Fix Applied
+
+- Added explicit type annotations to JSON response parsing
+- Changed `response.json()` to `response.json() as Promise<{ id: number; html_url: string }>`
+- Applied fix to all three GitHub API functions: createCheckRun, updateCheckRun, createPRComment
+
+#### Impact Assessment
+
+- TypeScript compilation now passes without errors
+- Type safety improved for GitHub API interactions
+- Better developer experience with proper typing
+
+#### Related Requirements
+
+- Development environment stability
+- Type safety requirements
 
 ---
 

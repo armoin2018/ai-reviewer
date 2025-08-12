@@ -13,7 +13,8 @@
     "onCommand:skillset.summarizeRules",
     "onCommand:skillset.previewGuidance",
     "onCommand:skillset.packLint",
-    "onCommand:skillset.selectPack"
+    "onCommand:skillset.selectPack",
+    "onCommand:skillset.manageClaudeDirectory"
   ],
   "categories": [
     "Other"
@@ -39,6 +40,10 @@
       {
         "command": "skillset.selectPack",
         "title": "Skillset: Select Mode/Pack"
+      },
+      {
+        "command": "skillset.manageClaudeDirectory",
+        "title": "Skillset: Manage Claude Directory"
       }
     ],
     "configuration": {

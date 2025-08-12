@@ -1,3 +1,6 @@
+import { scanDiffForSecrets, scanForSecrets, SecretScanOptions } from './secrets.js';
+import { validateLicenseHeaders, LicenseValidationOptions, LicenseValidationResult } from './license.js';
+
 type Rule = { id: string; text: string };
 type Finding = {
   id: string;
@@ -30,6 +33,14 @@ type Result = {
     codeFilesChanged: number;
     testFilesChanged: number;
     secretsDetected: number;
+    licenseViolations: number;
+    licenseValidation?: {
+      totalFiles: number;
+      validFiles: number;
+      invalidFiles: number;
+      missingHeaders: number;
+      licenseBreakdown: Record<string, number>;
+    };
     largeFiles: string[];
     directivesApplied: string[];
   };
@@ -68,17 +79,160 @@ export function assertCompliance(params: {
   const directives = parseDirectives(guidanceText);
   const applied: string[] = [];
 
-  // Basic secret scan
-  const secretPatterns: RegExp[] = [
-    /AWS_ACCESS_KEY_ID\s*[:=]\s*["']?[A-Z0-9]{16,20}["']?/,
-    /AWS_SECRET_ACCESS_KEY\s*[:=]\s*["']?[A-Za-z0-9\/+=]{30,}["']?/,
-    /ghp_[A-Za-z0-9]{36,}/,
-    /AIza[0-9A-Za-z\-_]{35}/,
-    /xox[baprs]-[A-Za-z0-9-]{10,}/,
-  ];
-  const secretsDetected = secretPatterns.reduce((acc, re) => acc + countMatches(diff, re), 0);
-  if (secretsDetected > 0)
-    genericFindings.push({ level: 'fail', note: `Potential secrets detected: ${secretsDetected}` });
+  // Comprehensive secret detection using new secret scanning system
+  const secretScanOptions: SecretScanOptions = {
+    enableEntropyAnalysis: true,
+    minEntropyThreshold: 4.0,
+    maxFileSize: maxFileBytes || 1024 * 1024
+  };
+  
+  const secretScanResult = scanDiffForSecrets(diff, secretScanOptions);
+  const secretsDetected = secretScanResult.findings.length;
+  
+  if (secretsDetected > 0) {
+    // Group secrets by severity for better reporting
+    const criticalSecrets = secretScanResult.findings.filter(f => f.severity === 'critical');
+    const highSecrets = secretScanResult.findings.filter(f => f.severity === 'high');
+    const mediumSecrets = secretScanResult.findings.filter(f => f.severity === 'medium');
+    const lowSecrets = secretScanResult.findings.filter(f => f.severity === 'low');
+    
+    if (criticalSecrets.length > 0) {
+      genericFindings.push({ 
+        level: 'fail', 
+        note: `CRITICAL: ${criticalSecrets.length} critical secrets detected (${criticalSecrets.map(s => s.type).join(', ')})` 
+      });
+    }
+    
+    if (highSecrets.length > 0) {
+      genericFindings.push({ 
+        level: 'fail', 
+        note: `HIGH: ${highSecrets.length} high-severity secrets detected (${highSecrets.map(s => s.type).join(', ')})` 
+      });
+    }
+    
+    if (mediumSecrets.length > 0) {
+      genericFindings.push({ 
+        level: 'warn', 
+        note: `MEDIUM: ${mediumSecrets.length} medium-severity secrets detected (${mediumSecrets.map(s => s.type).join(', ')})` 
+      });
+    }
+    
+    if (lowSecrets.length > 0) {
+      genericFindings.push({ 
+        level: 'warn', 
+        note: `LOW: ${lowSecrets.length} low-severity secrets detected (${lowSecrets.map(s => s.type).join(', ')})` 
+      });
+    }
+    
+    // Add detailed findings for each secret
+    for (const secret of secretScanResult.findings) {
+      genericFindings.push({
+        level: secret.severity === 'critical' || secret.severity === 'high' ? 'fail' : 'warn',
+        note: `Secret detected in ${secret.file}:${secret.line} - ${secret.description} (confidence: ${Math.round(secret.confidence * 100)}%)`
+      });
+    }
+  }
+
+  // Advanced license header validation using new license validation system
+  let licenseValidationResult: { results: LicenseValidationResult[]; summary: any } | null = null;
+  let licenseViolations = 0;
+  
+  if (fileContents && Object.keys(fileContents).length > 0) {
+    const filesToValidate = Object.entries(fileContents)
+      .filter(([path]) => CODE_RE.test(path))
+      .map(([path, content]) => ({ path, content }));
+    
+    if (filesToValidate.length > 0) {
+      const licenseOptions: LicenseValidationOptions = {
+        // Extract license requirements from guidance text if available
+        maxHeaderLines: 50,
+        strictMatching: false
+      };
+      
+      // Parse license requirements from guidance text
+      if (guidanceText) {
+        const allowedLicensesMatch = guidanceText.match(/allowed[_-]?licenses?[:\s]+([^\n]+)/i);
+        const requiredLicensesMatch = guidanceText.match(/required[_-]?licenses?[:\s]+([^\n]+)/i);
+        const prohibitedLicensesMatch = guidanceText.match(/(?:prohibited|banned|forbidden)[_-]?licenses?[:\s]+([^\n]+)/i);
+        
+        if (allowedLicensesMatch) {
+          licenseOptions.allowedLicenses = allowedLicensesMatch[1]
+            .split(/[,\s]+/)
+            .map(l => l.trim())
+            .filter(Boolean);
+        }
+        
+        if (requiredLicensesMatch) {
+          licenseOptions.requiredLicenses = requiredLicensesMatch[1]
+            .split(/[,\s]+/)
+            .map(l => l.trim())
+            .filter(Boolean);
+        }
+        
+        if (prohibitedLicensesMatch) {
+          licenseOptions.prohibitedLicenses = prohibitedLicensesMatch[1]
+            .split(/[,\s]+/)
+            .map(l => l.trim())
+            .filter(Boolean);
+        }
+      }
+      
+      licenseValidationResult = validateLicenseHeaders(filesToValidate, licenseOptions);
+      
+      // Count violations and add findings
+      for (const result of licenseValidationResult.results) {
+        if (!result.isValid) {
+          licenseViolations++;
+          
+          // Add error-level issues as fail findings
+          const errorIssues = result.issues.filter(issue => issue.severity === 'error');
+          const warningIssues = result.issues.filter(issue => issue.severity === 'warning');
+          
+          if (errorIssues.length > 0) {
+            genericFindings.push({
+              level: 'fail',
+              note: `License compliance failure in ${result.file}: ${errorIssues.map(i => i.message).join('; ')}`
+            });
+          }
+          
+          if (warningIssues.length > 0) {
+            genericFindings.push({
+              level: 'warn',
+              note: `License compliance warning in ${result.file}: ${warningIssues.map(i => i.message).join('; ')}`
+            });
+          }
+        }
+        
+        // Add suggestions as info-level findings
+        if (result.suggestions.length > 0) {
+          for (const suggestion of result.suggestions) {
+            genericFindings.push({
+              level: 'info',
+              note: `License suggestion for ${result.file}: ${suggestion.description}`
+            });
+          }
+        }
+      }
+      
+      // Add summary information
+      if (licenseValidationResult.summary.missingHeaders > 0) {
+        genericFindings.push({
+          level: 'warn',
+          note: `${licenseValidationResult.summary.missingHeaders} files are missing license headers`
+        });
+      }
+      
+      if (Object.keys(licenseValidationResult.summary.licenseBreakdown).length > 1) {
+        const licenses = Object.entries(licenseValidationResult.summary.licenseBreakdown)
+          .map(([license, count]) => `${license}: ${count}`)
+          .join(', ');
+        genericFindings.push({
+          level: 'info',
+          note: `License distribution across files: ${licenses}`
+        });
+      }
+    }
+  }
 
   if (!diff.endsWith('\n'))
     genericFindings.push({
@@ -230,7 +384,7 @@ export function assertCompliance(params: {
 
   const findings = (checklist || []).map((r) => ({
     id: r.id,
-    status: 'na',
+    status: 'na' as const,
     note: `Cannot deterministically verify: "${truncate(r.text, 120)}". Ensure compliance.`,
   }));
 
@@ -240,6 +394,8 @@ export function assertCompliance(params: {
       codeFilesChanged: codeFiles.length,
       testFilesChanged: testFiles.length,
       secretsDetected,
+      licenseViolations,
+      licenseValidation: licenseValidationResult?.summary,
       largeFiles,
       directivesApplied: applied,
     },

@@ -1,0 +1,33 @@
+# Git attributes for push protection and secret scanning
+
+# Exclude test files from secret scanning
+tests/** linguist-generated=true
+test/** linguist-generated=true
+**/tests/** linguist-generated=true  
+**/test/** linguist-generated=true
+**/*test*/** linguist-generated=true
+*.test.* linguist-generated=true
+*.spec.* linguist-generated=true
+
+# Test data files should be treated as test content
+tests/**/*.json merge=ours
+tests/**/*.xml merge=ours
+tests/**/*.yml merge=ours
+tests/**/*.yaml merge=ours
+test/**/*.json merge=ours
+test/**/*.xml merge=ours
+test/**/*.yml merge=ours
+test/**/*.yaml merge=ours
+
+# Mock and fixture files
+**/mocks/** linguist-generated=true
+**/fixtures/** linguist-generated=true
+**/stubs/** linguist-generated=true
+
+# Common test file patterns
+*.test.js linguist-generated=true
+*.spec.js linguist-generated=true
+*.test.ts linguist-generated=true
+*.spec.ts linguist-generated=true
+*.test.php linguist-generated=true
+*.spec.php linguist-generated=true

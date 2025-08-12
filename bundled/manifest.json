@@ -2,6 +2,7 @@
   "baseline-secure": {
     "title": "Baseline Secure Coding Policy",
     "description": "Minimal cross-language security and compliance assertions.",
+    "version": "1.0.0",
     "paths": {
       "policies": [
         "bundled/baseline-secure/policies/policy.md"
@@ -14,6 +15,7 @@
   "oss-apache-2": {
     "title": "OSS Apache-2 Header Policy",
     "description": "Require Apache-2 headers, block incompatible headers.",
+    "version": "1.0.0",
     "paths": {
       "policies": [
         "bundled/oss-apache-2/policies/policy.md"
@@ -26,6 +28,7 @@
   "enterprise-strict": {
     "title": "Enterprise Strict Policy",
     "description": "Strict directives for enterprise codebases.",
+    "version": "1.0.0",
     "paths": {
       "policies": [
         "bundled/enterprise-strict/policies/policy.md"
@@ -38,6 +41,7 @@
   "pci-dss": {
     "title": "PCI-DSS Hardening",
     "description": "Detect payment-card patterns and enforce PCI hygiene.",
+    "version": "1.0.0",
     "paths": {
       "policies": [
         "bundled/pci-dss/policies/policy.md"
@@ -50,6 +54,7 @@
   "pii-redaction": {
     "title": "PII Redaction",
     "description": "Prevents PII leakage; requires masking and tests.",
+    "version": "1.0.0",
     "paths": {
       "policies": [
         "bundled/pii-redaction/policies/policy.md"
@@ -62,6 +67,7 @@
   "design-doc-reviewer": {
     "title": "Design Doc Reviewer",
     "description": "Guides architectural document reviews.",
+    "version": "1.0.0",
     "paths": {
       "policies": [
         "bundled/design-doc-reviewer/policies/readme.md"

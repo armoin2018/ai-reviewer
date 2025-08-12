@@ -204,6 +204,173 @@ With increasing adoption of ARM64 architecture (Apple Silicon, AWS Graviton), mu
 #### Related Requirements
 - Container deployment optimization
 
+### SUGG-2025.08.12-001 - .claude Directory Management System Missing
+
+**Date**: 2025-08-12  
+**Priority**: High  
+**Category**: Architecture  
+**Suggested By**: Implementation Engineer  
+**Status**: Open
+
+#### Description
+
+Critical missing functionality: The system lacks implementation of .claude directory management capabilities defined in PLAN.md Epic 6 Stories 6.2-6.4. Current MCP server only provides basic Skills interface but doesn't support .claude/claude-instructions.md, .claude/agents/instructions/*.md, .claude/agents/personas/*.md file management, or .claude/commands/ integration.
+
+#### Rationale
+
+According to PLAN.md, the system should provide comprehensive .claude directory management for Claude Code integration, including:
+- Individual access to `.claude/claude-instructions.md` (R5.5)
+- Listing and access for `.claude/agents/instructions/*.md` (R5.6)  
+- Listing and access for `.claude/agents/personas/*.md` (R5.7)
+- File validation against schemas (R5.10, R8.4, R8.5)
+- Command discovery from `.claude/commands/` directory (R9.1)
+
+This functionality is essential for the system's intended use as a comprehensive skillset reviewer that integrates with Claude Code workflows.
+
+#### Implementation Approach
+
+1. Implement .claude directory file discovery and reading capabilities
+2. Add MCP Skills for file listing, reading, creating, and updating
+3. Create file validation system with schema checking
+4. Add command discovery and integration framework
+5. Implement proper error handling and security validation
+6. Add comprehensive test coverage
+
+#### Acceptance Criteria
+
+- .claude directory files accessible within 100ms via MCP (R5 acceptance)
+- File operations preserve directory structure and metadata (R5 acceptance)
+- Validation catches format errors with line-level feedback (R8 acceptance)
+- Commands discovered and registered automatically (R9 acceptance)
+- Full audit logging for all file operations (R12 validation)
+
+#### Related Requirements
+
+- R5.5-R5.12: MCP Server Integration
+- R8: Claude Directory Management  
+- R9: Commands Integration
+- R12: Security and audit requirements
+
+### SUGG-2025.08.12-002 - Missing Personas and Instructions Framework
+
+**Date**: 2025-08-12  
+**Priority**: Medium  
+**Category**: Architecture  
+**Suggested By**: Implementation Engineer  
+**Status**: Open
+
+#### Description
+
+The current implementation references personas in bundled guidance packs but lacks the .claude/agents/ directory structure needed for the run-plan workflow. The system should create missing personas and instructions that are referenced in PLAN.md.
+
+#### Rationale
+
+The run-plan command execution expects personas like `senior-nodejs-developer.md`, `mcp-expert.md`, `security-engineer.md`, etc. to exist, but they are not currently implemented. This creates a gap between the planned architecture and current implementation.
+
+#### Implementation Approach
+
+1. Create .claude/agents/personas/ directory with required personas:
+   - `senior-nodejs-developer.md`
+   - `mcp-expert.md` 
+   - `security-engineer.md`
+   - `api-developer.md`
+   - `vscode-extension-developer.md`
+   - Others referenced in PLAN.md
+
+2. Create .claude/agents/instructions/ directory with:
+   - `typescript-instructions.md`
+   - `main.instructions.md`
+
+3. Implement .claude/claude-instructions.md as master instructions file
+
+#### Acceptance Criteria
+
+- All personas referenced in PLAN.md exist and are properly formatted
+- Instructions are comprehensive and actionable
+- Files follow established schema and validation rules
+- Integration with MCP system works seamlessly
+
+#### Related Requirements
+
+- PLAN.md persona assignments
+- R8: Claude Directory Management
+
+### SUGG-2025.08.12-003 - Additional Test Coverage for Edge Cases
+
+**Date**: 2025-08-12  
+**Priority**: Low  
+**Category**: Testing  
+**Suggested By**: Implementation Engineer  
+**Status**: Open
+
+#### Description
+
+While the diff processing engine has excellent test coverage (>90%), additional edge case tests could be added for unusual diff formats, extreme file sizes, and malicious input detection.
+
+#### Rationale
+
+The current test suite covers most common scenarios effectively, but additional edge case testing would further improve robustness and security.
+
+#### Implementation Approach
+
+1. Add tests for extremely large diffs (multi-GB)
+2. Test malformed Unicode in diff content
+3. Add security tests for path traversal attempts
+4. Test performance under concurrent load
+5. Add fuzz testing for random diff inputs
+
+#### Acceptance Criteria
+
+- Test coverage remains above 90%
+- Security vulnerabilities detected and prevented
+- Performance under load meets SLA requirements
+- All edge cases handled gracefully
+
+#### Related Requirements
+
+- R3: Diff Processing requirements
+- R12: Security validation
+
+### SUGG-2025.08.12-004 - Production Readiness Assessment
+
+**Date**: 2025-08-12  
+**Priority**: Medium  
+**Category**: Architecture  
+**Suggested By**: Implementation Engineer  
+**Status**: Open
+
+#### Description
+
+The system has reached a high level of completion (~95%) with all core functionality implemented and tested. A comprehensive production readiness assessment should be conducted to identify any remaining gaps before deployment.
+
+#### Rationale
+
+With comprehensive functionality implemented across EPICs 4-6, including diff processing, compliance checking, secret detection, license validation, and MCP integration, the system is approaching production readiness. A formal assessment would ensure deployment confidence.
+
+#### Implementation Approach
+
+1. Conduct comprehensive integration testing across all components
+2. Perform load testing and performance validation under realistic conditions
+3. Complete security audit including penetration testing
+4. Validate MCP server integration with Claude Code in realistic scenarios
+5. Create production deployment documentation and runbooks
+6. Establish monitoring and alerting for production environment
+
+#### Acceptance Criteria
+
+- All integration tests pass with realistic data scenarios
+- Performance SLAs met under production load (API <2s, commands <500ms)
+- Security audit shows no critical vulnerabilities
+- MCP integration verified with Claude Code
+- Production deployment documentation complete
+- Monitoring and alerting operational
+
+#### Related Requirements
+
+- R10: Performance Requirements
+- R11: Reliability and Error Handling  
+- R12: Security and Compliance
+
 ---
 
 ## Implemented Suggestions

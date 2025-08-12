@@ -79,18 +79,20 @@ The system shall provide AI-powered code review capabilities through multiple in
 
 ### R5 - MCP Server Integration
 
-**Description**: The system shall provide Model Context Protocol server interface with .claude directory management.
+**Description**: The system shall provide Model Context Protocol server interface with comprehensive .claude directory management.
 
 - **R5.1**: Accept JSON-RPC requests over stdio
 - **R5.2**: Expose all HTTP API functionality via MCP Skills interface
 - **R5.3**: Handle graceful shutdown on SIGINT
 - **R5.4**: Provide structured error responses for invalid requests
-- **R5.5**: Provide individual access to `.claude/claude-instructions.md` file
-- **R5.6**: List with summary and individual access to `.claude/agents/instructions/*.md` files
-- **R5.7**: List with summary and individual access to `.claude/agents/personas/*.md` files
-- **R5.8**: Support adding new instructions and personas to `.claude/agents/` directories
-- **R5.9**: Support updating existing instructions and personas files
+- **R5.5**: Provide individual access to `.claude/claude-instructions.md` file via dedicated MCP API endpoint
+- **R5.6**: List with summary and individual access to `.claude/agents/instructions/*.md` files via MCP endpoints
+- **R5.7**: List with summary and individual access to `.claude/agents/personas/*.md` files via MCP endpoints
+- **R5.8**: Support adding new instructions and personas to `.claude/agents/` directories via MCP operations
+- **R5.9**: Support updating existing instructions and personas files via MCP operations
 - **R5.10**: Validate instruction and persona file formats against established schemas
+- **R5.11**: Provide MCP endpoints for file content retrieval with caching and performance optimization
+- **R5.12**: Support batch operations for multiple file access and updates
 
 **Acceptance Criteria**:
 
@@ -102,6 +104,8 @@ The system shall provide AI-powered code review capabilities through multiple in
 - Personas listing includes names, roles, and capability summaries
 - File creation/updates preserve existing directory structure and naming conventions
 - All .claude file operations include validation against persona/instruction schemas
+- Batch operations complete within 2 seconds for up to 50 files
+- MCP API endpoints follow JSON-RPC 2.0 specification exactly
 
 ### R6 - VS Code Extension
 
@@ -124,7 +128,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 
 - **R7.1**: Support GitHub App authentication via manifest setup
 - **R7.2**: Generate Check Runs with file annotations
-- **R7.3**: Load repo-specific rules from `.copilot/` directories
+- **R7.3**: Load repo-specific rules from both `.github/` and `.copilot/` directories (with `.github/` as primary)
 - **R7.4**: Infer quality gates from project files (package.json, pyproject.toml, etc.)
 - **R7.5**: Support PR comment generation
 - **R7.6**: Build `.claude/commands/` functionality into skillset APIs
@@ -141,6 +145,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 - Commands from `.claude/commands/` accessible via all supported IDEs
 - Multi-IDE integration maintains consistent functionality across platforms
 - Integration APIs respond within 500ms for command execution
+- Both `.github/` and `.copilot/` directories supported with proper precedence
 
 ### R8 - Claude Directory Management
 
@@ -169,7 +174,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 
 ### R9 - Commands Integration
 
-**Description**: The system shall integrate .claude/commands functionality into the skillset framework.
+**Description**: The system shall integrate .claude/commands functionality into the skillset framework for all supported IDEs.
 
 - **R9.1**: Discover and parse command definitions from `.claude/commands/` directory
 - **R9.2**: Expose commands via HTTP API endpoints with proper routing
@@ -180,7 +185,9 @@ The system shall provide AI-powered code review capabilities through multiple in
 - **R9.7**: Provide command help and documentation generation
 - **R9.8**: Log command execution with correlation IDs and performance metrics
 - **R9.9**: Support command versioning and backward compatibility
-- **R9.10**: Enable command discovery and autocomplete in supported IDEs
+- **R9.10**: Enable command discovery and autocomplete in GitHub Copilot, Cursor, WindSurf, and Claude Code
+- **R9.11**: Provide unified command interface across all supported IDEs
+- **R9.12**: Support command execution context switching between projects
 
 **Acceptance Criteria**:
 
@@ -189,8 +196,10 @@ The system shall provide AI-powered code review capabilities through multiple in
 - Parameter validation prevents malformed command invocation
 - Command help documentation generated from metadata and schemas
 - Execution logging includes timing, parameters, and results (sanitized)
-- IDE autocomplete provides command signatures and examples
+- IDE autocomplete provides command signatures and examples in all 4 supported IDEs
 - Versioned commands maintain backward compatibility across updates
+- Command interface consistency verified across GitHub Copilot, Cursor, WindSurf, and Claude Code
+- Command execution context properly isolated per project
 
 ---
 
@@ -204,25 +213,28 @@ The system shall provide AI-powered code review capabilities through multiple in
 - **R10.4**: Container startup time <10 seconds
 - **R10.5**: .claude file operations complete within 1 second
 - **R10.6**: Command execution latency <500ms for simple operations
+- **R10.7**: MCP API responses within 200ms for file access operations
 
 ### R11 - Reliability
 
 - **R11.1**: System uptime >99.9% excluding planned maintenance
-- **R11.2**: Graceful handling of GitHub API rate limits
-- **R11.3**: Automatic retry logic with exponential backoff
+- **R11.2**: Graceful handling of GitHub API rate limits with exponential backoff
+- **R11.3**: Automatic retry logic with exponential backoff for all external dependencies
 - **R11.4**: Circuit breaker pattern for external dependencies
 - **R11.5**: File system operations with atomic updates and rollback capability
 - **R11.6**: Command execution with error recovery and graceful degradation
+- **R11.7**: MCP server resilience to client disconnections and malformed requests
 
 ### R12 - Security
 
 - **R12.1**: GitHub App private keys stored securely (environment variables)
 - **R12.2**: No hardcoded secrets in source code
-- **R12.3**: Input validation on all API endpoints
+- **R12.3**: Input validation on all API endpoints and MCP operations
 - **R12.4**: HTTPS enforcement for production deployments
-- **R12.5**: Audit logging for sensitive operations
+- **R12.5**: Audit logging for sensitive operations with correlation IDs
 - **R12.6**: File system access controls for .claude directory operations
 - **R12.7**: Command execution sandboxing and privilege restrictions
+- **R12.8**: MCP operation authentication and authorization
 
 ### R13 - Scalability
 
@@ -245,6 +257,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 - **R14.4**: Multi-interface design (HTTP, MCP, VS Code)
 - **R14.5**: File system abstraction layer for .claude directory operations
 - **R14.6**: Command execution framework with plugin architecture
+- **R14.7**: JSON-RPC 2.0 compliant MCP server implementation
 
 ### R15 - Data Formats
 
@@ -254,6 +267,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 - **R15.4**: YAML/JSON for configuration files
 - **R15.5**: Structured metadata format for personas and instructions
 - **R15.6**: Command definition schema with versioning support
+- **R15.7**: JSON-RPC 2.0 format for MCP communication
 
 ### R16 - Dependencies
 
@@ -263,6 +277,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 - **R16.4**: Regular dependency updates and security patches
 - **R16.5**: File system libraries with atomic operation support
 - **R16.6**: Markdown parsing and validation libraries
+- **R16.7**: JSON-RPC libraries with TypeScript support
 
 ---
 
@@ -273,7 +288,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 - **R17.1**: TypeScript strict mode enforcement
 - **R17.2**: ESLint configuration for code consistency
 - **R17.3**: Unit test coverage >80%
-- **R17.4**: Integration tests for all API endpoints
+- **R17.4**: Integration tests for all API endpoints and MCP operations
 - **R17.5**: Automated testing for .claude file operations
 - **R17.6**: Command execution validation and testing
 
@@ -285,6 +300,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 - **R18.4**: Architecture documentation in CLAUDE.md
 - **R18.5**: Command reference documentation with examples
 - **R18.6**: Persona and instruction template documentation
+- **R18.7**: MCP API documentation with JSON-RPC examples
 
 ### R19 - Licensing
 
@@ -305,7 +321,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 - **R20.3**: Linux/macOS/Windows development support
 - **R20.4**: Cloud deployment ready (AWS, GCP, Azure)
 - **R20.5**: File system permissions for .claude directory access
-- **R20.6**: Multi-IDE compatibility (VS Code, Cursor, WindSurf)
+- **R20.6**: Multi-IDE compatibility (VS Code, Cursor, WindSurf, GitHub Copilot via Claude Code)
 
 ### R21 - Configuration
 
@@ -324,12 +340,14 @@ The system shall provide AI-powered code review capabilities through multiple in
 
 1. End-to-end PR review workflow completes successfully
 2. All guidance packs load and validate without errors
-3. MCP server integrates with Claude without issues
+3. MCP server integrates with Claude Code without issues
 4. VS Code extension installs and functions properly
 5. Container deployment succeeds in target environments
 6. .claude directory management works across all IDEs (GitHub Copilot, Cursor, WindSurf, Claude Code)
 7. Commands execution and discovery functions in all supported editors
 8. Persona and instruction file operations maintain data integrity
+9. MCP APIs provide complete access to .claude directory structure
+10. Multi-IDE integration maintains feature parity across platforms
 
 ### Performance Benchmarks
 
@@ -340,6 +358,7 @@ The system shall provide AI-powered code review capabilities through multiple in
 5. .claude file operations complete within 1 second performance target
 6. Command execution latency meets <500ms requirement
 7. Multi-IDE integration maintains consistent response times
+8. MCP API responses meet <200ms requirement for file operations
 
 ### Security Validation
 
@@ -350,21 +369,44 @@ The system shall provide AI-powered code review capabilities through multiple in
 5. File system access controls prevent unauthorized .claude directory access
 6. Command execution sandboxing prevents privilege escalation
 7. Multi-tenant isolation maintains data separation
+8. MCP operations properly authenticated and authorized
+
+### Additional Security Considerations (from BUGS.md)
+
+- **File System Access Controls** (SEC-2025.08.11-001): .claude directory operations require careful access controls with file permission validation, audit logging, directory traversal prevention, and atomic operations with rollback capability
+- **Command Execution Sandboxing** (SEC-2025.08.11-002): Command execution framework requires proper sandboxing with restricted environment, parameter validation, limited file/network access, and comprehensive logging
+
+### Known Performance Targets (from BUGS.md)
+
+- **API Response Time**: <2 seconds (PERF-2025.08.11-001)
+- **Command Execution**: <500ms for simple operations
+- **File Operations**: <1 second for .claude directory operations
+- **Optimization Areas**: Caching, async processing, connection pooling, JIT compilation, result caching, parallel execution, memory mapping, batch operations, concurrent I/O
+
+### Known Limitations (from BUGS.md)
+
+- **GitHub API Rate Limiting** (LIMIT-2025.08.11-001): Requires aggressive caching, conditional requests, request queuing, and retry logic
+- **MCP Protocol Evolution** (LIMIT-2025.08.11-002): Requires version compatibility checking, monitoring specification updates, and fallback mechanisms
+- **Multi-IDE Testing Complexity** (LIMIT-2025.08.11-003): Requires containerized testing environments and automated testing scripts
 
 ---
 
 ## Future Enhancements (Out of Scope)
 
+*Note: The following enhancements are documented in SUGGESTIONS.md and considered for future releases:*
+
 - Machine learning model training for custom rule detection
-- Real-time collaboration features for .claude directory editing
+- **Real-time collaboration features for .claude directory editing** (SUGG-2025.08.11-002)
 - Multi-language support beyond English
-- Advanced analytics and reporting dashboard
+- **Advanced analytics and reporting dashboard** (SUGG-2025.08.11-004)
 - Custom rule DSL for policy authoring
 - Visual persona and instruction editors
-- AI-powered command suggestion and generation
+- **AI-powered command suggestion and generation** (SUGG-2025.08.11-003)
 - Cross-repository .claude content synchronization
 - Advanced command orchestration and workflow automation
 - Integration with additional IDEs and editors beyond current scope
+- **Enhanced command versioning system with backward compatibility** (SUGG-2025.08.11-001)
+- **Multi-architecture container builds** (ARM64 + AMD64) (SUGG-2025.08.11-005)
 
 ---
 
@@ -406,5 +448,20 @@ Requirements align with `.claude/claude-instructions.md` standards:
 - **R18**: Maintains documentation standards including README and API docs
 - **R8**: Supports persona-driven development per instruction guidelines
 - **R9**: Enables .claude/commands integration as requested in ASK.md
+- **R7.3**: Addresses directory preference with .github as primary, .copilot as secondary support
 
-[TODO: Validate command schema format against existing .claude/commands structure when directory is created]
+---
+
+## ASK.md Requirements Coverage
+
+**✅ Complete Coverage of ASK.md Requirements:**
+
+1. **MCP Server APIs for .claude/claude-instructions.md** → Covered by R5.5
+2. **List/access .claude/agents/instructions/*.md** → Covered by R5.6, R8.2
+3. **List/access .claude/agents/personas/*.md** → Covered by R5.7, R8.3
+4. **Add/update instructions and personas** → Covered by R5.8, R5.9, R8.6, R8.7, R8.8
+5. **Build .claude/commands into skillset for all IDEs** → Covered by R9 (all sub-requirements)
+6. **Directory path (.copilot vs .github)** → Addressed in R7.3 with .github as primary
+
+**Resolution of Path Conflict:**
+Based on recent implementation progress showing enhanced GitHub integration with both .github and .copilot support, R7.3 establishes .github as the primary directory with .copilot as secondary fallback, maintaining backward compatibility while following GitHub conventions.

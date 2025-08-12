@@ -1,5 +1,127 @@
 # REQUIREMENTS-CHANGELOG.md
 
+## Version 2025.08.11-00003
+
+**Date**: August 11, 2025  
+**Change Type**: Major Requirements Refinement - ASK.md Integration  
+**Author**: Claude Code  
+**Instructions Used**: `main.instructions.md`, `claude-instructions.md`  
+**Personas Referenced**: `mcp-expert.md`, `technical-writer.md`, `senior-nodejs-developer.md`
+
+### Summary of Changes
+
+Comprehensive refinement of REQUIREMENTS.md based on ASK.md requirements and current implementation progress. Addressed ASK.md-specific needs while resolving directory path conflicts based on recent implementation status.
+
+### Major Changes Applied
+
+1. **Enhanced MCP Server Integration (R5)**
+   - **R5.5**: Added dedicated MCP API endpoint for `.claude/claude-instructions.md` access (ASK.md requirement #1)
+   - **R5.6**: Enhanced MCP endpoints for listing/accessing `.claude/agents/instructions/*.md` (ASK.md requirement #2)
+   - **R5.7**: Enhanced MCP endpoints for listing/accessing `.claude/agents/personas/*.md` (ASK.md requirement #3)
+   - **R5.8, R5.9**: Added MCP operations for adding/updating instructions and personas (ASK.md requirement #4)
+   - **R5.11**: Added MCP endpoints with caching and performance optimization
+   - **R5.12**: Added batch operations support for multiple file access/updates
+
+2. **Expanded Commands Integration (R9)**
+   - **R9.10**: Enhanced command discovery for GitHub Copilot, Cursor, WindSurf, and Claude Code (ASK.md requirement #5)
+   - **R9.11**: Added unified command interface across all supported IDEs
+   - **R9.12**: Added command execution context switching between projects
+   - Emphasized multi-IDE integration throughout R9 requirements
+
+3. **Resolved Directory Path Conflict (R7.3)**
+   - Addressed ASK.md requirement #6 (.copilot→.github path preference)
+   - Based on recent implementation progress, established `.github/` as primary with `.copilot/` as secondary fallback
+   - Maintains backward compatibility while following GitHub conventions
+   - Resolves conflict between ASK.md preference and recent implementation additions
+
+4. **Enhanced Multi-IDE Support (R7, R20.6)**
+   - Clarified support for GitHub Copilot, Cursor, WindSurf, and Claude Code
+   - Updated acceptance criteria for consistent multi-platform functionality
+   - Added integration API response time requirements (<500ms)
+
+5. **Expanded Technical Requirements**
+   - **R14.7**: Added JSON-RPC 2.0 compliant MCP server implementation requirement
+   - **R15.7**: Added JSON-RPC 2.0 format for MCP communication
+   - **R16.7**: Added JSON-RPC libraries with TypeScript support
+   - **R18.7**: Added MCP API documentation with JSON-RPC examples
+
+6. **Enhanced Performance Requirements (R10.7)**
+   - Added MCP API response time requirement (<200ms for file access operations)
+   - Aligned with ASK.md performance expectations for file system operations
+
+7. **Expanded Security Requirements (R12.8)**
+   - Added MCP operation authentication and authorization requirements
+   - Enhanced security validation criteria for MCP operations
+
+8. **Updated Acceptance Criteria**
+   - Added 2 new system integration test criteria (MCP APIs, multi-IDE feature parity)
+   - Enhanced performance benchmarks with MCP API response time requirements
+   - Added MCP operation authentication to security validation criteria
+
+### ASK.md Requirements Analysis
+
+**✅ Complete Coverage Achieved:**
+
+| ASK.md Requirement | REQUIREMENTS.md Coverage | Status |
+|-------------------|-------------------------|---------|
+| 1. MCP Server APIs for `.claude/claude-instructions.md` | R5.5 | ✅ Complete |
+| 2. List/access `.claude/agents/instructions/*.md` | R5.6, R8.2 | ✅ Complete |
+| 3. List/access `.claude/agents/personas/*.md` | R5.7, R8.3 | ✅ Complete |
+| 4. Add/update instructions and personas | R5.8, R5.9, R8.6, R8.7, R8.8 | ✅ Complete |
+| 5. Build `.claude/commands` into skillset for all IDEs | R9.1-R9.12 (comprehensive) | ✅ Complete |
+| 6. Fix .copilot path → .github preference | R7.3 (resolved with fallback support) | ✅ Complete |
+
+### Directory Path Resolution
+
+**Issue**: ASK.md requested changing `.copilot` references to `.github`, but recent implementation (Story 4.1) enhanced GitHub integration with support for both directories.
+
+**Resolution Applied**:
+- **Primary**: `.github/` directory (ASK.md preference)
+- **Secondary**: `.copilot/` directory (backward compatibility)
+- **Implementation**: R7.3 specifies "Load repo-specific rules from both `.github/` and `.copilot/` directories (with `.github/` as primary)"
+- **Benefit**: Maintains backward compatibility while following GitHub conventions
+
+### Implementation Status Alignment
+
+Based on HISTORY.md analysis:
+
+**✅ Completed Epics:**
+- EPIC 1: Project Management & Compliance Framework 
+- EPIC 2: Development Environment & Toolchain
+- EPIC 3: Core API Server Foundation
+- Story 4.1: GitHub Repository Integration (enhanced with .copilot support)
+
+**📋 Current Status:**
+- EPIC 4: Rule Management & Processing (Story 4.2 in progress)
+- Requirements now aligned with current implementation capabilities
+
+### Technical Specifications Added
+
+1. **JSON-RPC 2.0 Compliance**: All MCP operations must follow JSON-RPC 2.0 specification
+2. **Performance Targets**: MCP API responses <200ms for file operations
+3. **Batch Operations**: Support up to 50 files in 2 seconds
+4. **Multi-IDE Integration**: Consistent functionality across 4 supported platforms
+5. **Command Discovery**: Automatic registration and autocomplete in all IDEs
+
+### Validation Status
+
+✅ **Complete**: All ASK.md requirements integrated into production-ready specifications  
+✅ **Aligned**: Requirements mapped to existing implementation progress and .claude structure  
+✅ **Testable**: 68 total acceptance criteria with measurable outcomes  
+✅ **Production-Ready**: Clear requirement identifiers with detailed sub-requirements and performance targets  
+✅ **Conflict-Resolved**: Directory path preference addressed with backward compatibility
+
+### Next Implementation Priorities
+
+Based on ASK.md requirements and current progress:
+
+1. **Priority 1**: Complete R5 MCP server enhancements for .claude directory access (ASK.md #1-4)
+2. **Priority 2**: Implement R9 command execution framework with multi-IDE support (ASK.md #5)
+3. **Priority 3**: Validate R7.3 directory precedence in GitHub integration (ASK.md #6)
+4. **Priority 4**: Continue EPIC 4 development with enhanced requirements
+
+---
+
 ## Version 2025.08.11-00002
 
 **Date**: August 11, 2025  

@@ -22,9 +22,9 @@ async function handle(line: string) {
   try {
     req = JSON.parse(line);
   } catch {
-    return send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
+    return send({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' } });
   }
-  const id = req.id ?? null;
+  const id = req.id;
   try {
     const fn = (Skills as any)[req.method];
     if (!fn) throw new Error(`Method not found: ${req.method}`);
