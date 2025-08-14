@@ -11,5 +11,4 @@ description: Create a git commit
 - Recent commits: !`git log --oneline -10`
 
 ## Your task
-
-Based on the above changes, create a single git commit.
+- Create a git commit message that summarizes the changes made to the repository.
